@@ -9,4 +9,4 @@
 - [x] Create `arena.js` with a 2D HTML5 Canvas simulation for agent swarm movement
 - [x] Create `README.md` documentation
 - [x] Validate locally
-- [/] Add files to Git, commit, and push to GitHub repository
+- [x] Add files to Git, commit, and push to GitHub repository

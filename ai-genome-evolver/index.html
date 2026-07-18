@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Genome Evolver</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="ui-container">
+        <h1>AI Genome Evolver</h1>
+        <div class="stats">
+            <p>Generation: <span id="gen-count">0</span></p>
+            <p>Alive: <span id="alive-count">0</span></p>
+            <p>Max Fitness: <span id="max-fitness">0</span></p>
+        </div>
+        <div class="controls">
+            <button id="btn-pause">Pause</button>
+            <button id="btn-reset">Reset</button>
+        </div>
+    </div>
+    <canvas id="simulation-canvas"></canvas>
+    <script src="main.js"></script>
+</body>
+</html>

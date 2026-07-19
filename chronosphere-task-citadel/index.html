@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chronosphere Task Citadel</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app-container">
+        <div id="game-panel">
+            <div id="hud">
+                <h1>Chronosphere Citadel</h1>
+                <div class="stats">
+                    <p>Chronotons (Resources): <span id="resource-count">0</span></p>
+                    <p>Citadel Level: <span id="citadel-level">1</span></p>
+                </div>
+                <button id="upgrade-btn">Upgrade Citadel (Cost: <span id="upgrade-cost">10</span>)</button>
+            </div>
+            <canvas id="citadel-canvas" width="600" height="600"></canvas>
+        </div>
+        <div id="task-panel">
+            <h2>Your Quests</h2>
+            <div class="input-group">
+                <input type="text" id="task-input" placeholder="Enter a new quest...">
+                <button id="add-task-btn">Add Quest</button>
+            </div>
+            <ul id="task-list"></ul>
+        </div>
+    </div>
+
+    <script src="tasks.js"></script>
+    <script src="engine.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,183 @@
+:root {
+    --primary-color: #2c3e50;
+    --secondary-color: #34495e;
+    --accent-color: #e74c3c;
+    --text-light: #ecf0f1;
+    --text-dark: #2c3e50;
+    --canvas-bg: #1a1a2e;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--primary-color);
+    color: var(--text-light);
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#app-container {
+    display: flex;
+    width: 95vw;
+    max-width: 1200px;
+    height: 90vh;
+    background-color: var(--secondary-color);
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    overflow: hidden;
+}
+
+#game-panel {
+    flex: 2;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    border-right: 2px solid var(--primary-color);
+}
+
+#hud {
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 10;
+}
+
+#hud h1 {
+    font-size: 24px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+.stats {
+    display: flex;
+    gap: 20px;
+    font-weight: bold;
+}
+
+#citadel-canvas {
+    background-color: var(--canvas-bg);
+    flex-grow: 1;
+    width: 100%;
+    height: 100%;
+}
+
+#upgrade-btn {
+    align-self: flex-start;
+    padding: 10px 20px;
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background 0.3s;
+}
+
+#upgrade-btn:hover {
+    background-color: #c0392b;
+}
+
+#upgrade-btn:disabled {
+    background-color: #7f8c8d;
+    cursor: not-allowed;
+}
+
+#task-panel {
+    flex: 1;
+    padding: 20px;
+    background-color: #ecf0f1;
+    color: var(--text-dark);
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+#task-panel h2 {
+    margin-bottom: 10px;
+    border-bottom: 2px solid var(--accent-color);
+    padding-bottom: 5px;
+}
+
+.input-group {
+    display: flex;
+    gap: 10px;
+}
+
+#task-input {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #bdc3c7;
+    border-radius: 4px;
+}
+
+#add-task-btn {
+    padding: 10px 15px;
+    background-color: #27ae60;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+#add-task-btn:hover {
+    background-color: #2ecc71;
+}
+
+#task-list {
+    list-style: none;
+    overflow-y: auto;
+    flex-grow: 1;
+}
+
+.task-item {
+    background: white;
+    padding: 15px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    transition: transform 0.2s;
+}
+
+.task-item:hover {
+    transform: translateX(5px);
+}
+
+.task-item.completed {
+    opacity: 0.6;
+}
+
+.task-item.completed span {
+    text-decoration: line-through;
+}
+
+.task-actions button {
+    margin-left: 5px;
+    padding: 5px 10px;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.complete-btn {
+    background-color: #3498db;
+    color: white;
+}
+
+.delete-btn {
+    background-color: #e74c3c;
+    color: white;
+}

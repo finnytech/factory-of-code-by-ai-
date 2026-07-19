@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Quantum Key Distribution (QKD) Simulator & Visualizer. Explore the physics, mechanics, and security of the BB84 protocol with noise and eavesdropping simulations.">
-    <title>Quantum Cryptography Lab — BB84 Protocol Simulator</title>
+    <meta name="description" content="Quantum Key Distribution (QKD) Simulator & Visualizer. Explore physical models: attenuation, WCP multi-photon states, PNS attack, decoy states, and live key rate charts.">
+    <title>Quantum Cryptography Lab — BB84 Physical QKD Simulator</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -13,7 +13,7 @@
         <header>
             <div class="title-badge">Quantum Secure Communications</div>
             <h1>Quantum Cryptography Lab</h1>
-            <p class="subtitle">Interactive Quantum Key Distribution (QKD) Simulator & Analyzer based on the BB84 Protocol.</p>
+            <p class="subtitle">Interactive QKD Physical Link Simulator: Multi-Photon Pulses, PNS Attacks, Decoy States & Live Key Rate Curves.</p>
         </header>
 
         <!-- Main Dashboard -->
@@ -28,7 +28,7 @@
                 
                 <div class="control-group">
                     <label for="key-length-slider">
-                        <span>Photon Stream Size</span>
+                        <span>Pulse Stream Size</span>
                         <span class="label-val" id="key-length-val">50</span>
                     </label>
                     <input type="range" id="key-length-slider" min="10" max="150" step="5" value="50">
@@ -36,12 +36,51 @@
 
                 <div class="control-group">
                     <label for="noise-slider">
-                        <span>Fiber Decoherence Noise</span>
-                        <span class="label-val" id="noise-val">5%</span>
+                        <span>Alignment Error Rate</span>
+                        <span class="label-val" id="noise-val">2%</span>
                     </label>
-                    <input type="range" id="noise-slider" min="0" max="50" step="1" value="5">
+                    <input type="range" id="noise-slider" min="0" max="10" step="1" value="2">
                 </div>
 
+                <!-- NEW: Fiber Link Distance -->
+                <div class="control-group">
+                    <label for="distance-slider">
+                        <span>Fiber Link Distance</span>
+                        <span class="label-val" id="distance-val">40 km</span>
+                    </label>
+                    <input type="range" id="distance-slider" min="0" max="120" step="5" value="40">
+                </div>
+
+                <!-- NEW: Light Source Mode -->
+                <div class="control-group">
+                    <label for="source-mode-select">Light Source Mode</label>
+                    <select id="source-mode-select" class="form-select">
+                        <option value="single_photon">Ideal Single Photon Source</option>
+                        <option value="wcp" selected>Weak Coherent Pulses (Laser)</option>
+                    </select>
+                </div>
+
+                <!-- NEW: Mean Photon Number (mu) -->
+                <div class="control-group" id="mu-container">
+                    <label for="mu-slider">
+                        <span>Mean Photon Number (μ)</span>
+                        <span class="label-val" id="mu-val">0.5</span>
+                    </label>
+                    <input type="range" id="mu-slider" min="0.1" max="1.0" step="0.05" value="0.5">
+                </div>
+
+                <!-- NEW: Decoy States Protocol -->
+                <div class="switch-control" id="decoy-container">
+                    <span style="font-size: 0.9rem; font-weight: 500; color: var(--text-secondary);">Decoy State Protocol</span>
+                    <label class="switch">
+                        <input type="checkbox" id="decoy-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.05); margin: 1rem 0;">
+
+                <!-- Eavesdropping -->
                 <div class="switch-control">
                     <span style="font-size: 0.9rem; font-weight: 500; color: var(--text-secondary);">Active Eavesdropper (Eve)</span>
                     <label class="switch">
@@ -49,14 +88,18 @@
                         <span class="slider"></span>
                     </label>
                 </div>
-                
-                <button class="btn-primary" id="btn-run">Run Full Protocol</button>
-                <button class="btn-secondary" id="btn-step">Start Step-by-Step</button>
-                
-                <div style="margin-top: 1.5rem; font-size: 0.8rem; color: var(--text-muted); border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1rem;">
-                    <p style="margin-bottom: 0.5rem;"><strong style="color: var(--neon-cyan);">Rectilinear basis (+)</strong> encodes 0 as 0° (→) and 1 as 90° (↑).</p>
-                    <p><strong style="color: var(--neon-purple);">Diagonal basis (x)</strong> encodes 0 as 45° (↗) and 1 as 135° (↖).</p>
+
+                <!-- NEW: Eavesdropper Strategy -->
+                <div class="control-group" id="eve-strategy-container">
+                    <label for="eve-strategy-select">Eavesdropper Strategy</label>
+                    <select id="eve-strategy-select" class="form-select">
+                        <option value="intercept_resend" selected>Intercept & Resend</option>
+                        <option value="pns">Photon Number Splitting (PNS)</option>
+                    </select>
                 </div>
+                
+                <button class="btn-primary" id="btn-run">Run Full Simulation</button>
+                <button class="btn-secondary" id="btn-step">Start Step-by-Step</button>
             </div>
 
             <!-- Workspace -->
@@ -65,36 +108,49 @@
                 <div class="wizard-steps">
                     <div class="step active" id="step-0" data-step="0">
                         <h4>1. Prepare</h4>
-                        <p>Alice States</p>
+                        <p>Alice Pulses</p>
                     </div>
                     <div class="step" id="step-1" data-step="1">
                         <h4>2. Transmit</h4>
-                        <p>Quantum Channel</p>
+                        <p>Fiber Channel</p>
                     </div>
                     <div class="step" id="step-2" data-step="2">
                         <h4>3. Measure</h4>
-                        <p>Bob Detection</p>
+                        <p>Bob Clicks</p>
                     </div>
                     <div class="step" id="step-3" data-step="3">
                         <h4>4. Sift</h4>
                         <p>Bases Compare</p>
                     </div>
                     <div class="step" id="step-4" data-step="4">
-                        <h4>5. Amplify & Key</h4>
-                        <p>Error Correction</p>
+                        <h4>5. Amplify</h4>
+                        <p>Reconciled Key</p>
                     </div>
                 </div>
 
-                <!-- Quantum Channel Visualizer -->
-                <div class="glass-card" style="padding: 1rem; margin-bottom: 1.5rem;">
-                    <h3 class="card-title" style="font-size: 1.1rem; margin-bottom: 0.75rem; border-bottom: none; padding-bottom: 0;">
-                        Quantum Channel Visualizer
-                    </h3>
-                    <div class="visualizer-container">
-                        <div class="channel-tag" id="alice-tag">Alice Transmitter</div>
-                        <div class="channel-tag" id="eve-tag">Eve Interceptor</div>
-                        <div class="channel-tag" id="bob-tag">Bob Receiver</div>
-                        <canvas id="quantum-canvas"></canvas>
+                <!-- Multi-Canvas Workspace Panels -->
+                <div class="workspace-panels">
+                    <!-- Quantum Channel Visualizer -->
+                    <div class="glass-card" style="padding: 1rem;">
+                        <h3 class="card-title" style="font-size: 1.1rem; margin-bottom: 0.75rem; border-bottom: none; padding-bottom: 0;">
+                            Quantum Channel Visualizer
+                        </h3>
+                        <div class="visualizer-container">
+                            <div class="channel-tag" id="alice-tag">Alice Laser</div>
+                            <div class="channel-tag" id="eve-tag">Eve Interceptor</div>
+                            <div class="channel-tag" id="bob-tag">Bob Detectors</div>
+                            <canvas id="quantum-canvas"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- NEW: Secure Key Rate Chart -->
+                    <div class="glass-card" style="padding: 1rem;">
+                        <h3 class="card-title" style="font-size: 1.1rem; margin-bottom: 0.75rem; border-bottom: none; padding-bottom: 0;">
+                            Key Rate vs Distance (Physics Link Chart)
+                        </h3>
+                        <div class="visualizer-container">
+                            <canvas id="chart-canvas"></canvas>
+                        </div>
                     </div>
                 </div>
 
@@ -143,6 +199,8 @@
                         <thead>
                             <tr>
                                 <th>#</th>
+                                <th>Pulse Type</th>
+                                <th>Photons ($n$)</th>
                                 <th>Alice Bit</th>
                                 <th>Alice Basis</th>
                                 <th>Polarization</th>
@@ -150,12 +208,13 @@
                                 <th class="eve-col">Eve Bit</th>
                                 <th>Bob Basis</th>
                                 <th>Bob Bit</th>
+                                <th>Bob Click</th>
                                 <th>Sift Match</th>
                             </tr>
                         </thead>
                         <tbody id="state-table-body">
                             <tr>
-                                <td colspan="9" style="text-align: center; color: var(--text-muted); padding: 2rem;">No simulation data available. Click "Run Full Protocol" to generate states.</td>
+                                <td colspan="12" style="text-align: center; color: var(--text-muted); padding: 2rem;">No simulation data available. Click "Run Full Simulation" to generate states.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -170,11 +229,11 @@
                         <div class="dot dot-yellow"></div>
                         <div class="dot dot-green"></div>
                     </div>
-                    <div class="terminal-title">QUANTUM LAB TERMINAL CONSOLE</div>
+                    <div class="terminal-title">QUANTUM LAB PHYSICS CONSOLE</div>
                     <div style="width: 42px;"></div>
                 </div>
                 <div class="terminal-body" id="terminal-console">
-                    <div class="log-line"><span>[13:12:00]</span> Quantum Communication System initialized and ready for deployment.</div>
+                    <div class="log-line"><span>[11:30:00]</span> Physical Quantum Cryptography Lab active. Poisson coherent laser sources calibrated.</div>
                 </div>
             </div>
 

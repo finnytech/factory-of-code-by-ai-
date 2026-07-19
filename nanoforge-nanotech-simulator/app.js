@@ -43,6 +43,13 @@ document.addEventListener("DOMContentLoaded", () => {
     const mutationCanvas = document.getElementById("mutation-chart");
     const mutationCtx = mutationCanvas.getContext("2d");
 
+    // Lineage tracer
+    const lineageConsole = document.getElementById("lineage-console");
+
+    // Display & Currents Selectors
+    const displayModeSelector = document.getElementById("display-mode-selector");
+    const currentsSelector = document.getElementById("currents-selector");
+
     const missionHud = document.getElementById("mission-hud");
     const missionSelector = document.getElementById("mission-selector");
     const btnStartMission = document.getElementById("btn-start-mission");
@@ -113,6 +120,10 @@ document.addEventListener("DOMContentLoaded", () => {
     let globalMaxGeneration = 0;
     let isRunning = true;
     
+    // Spectrometer visuals and Flow currents
+    let gridDisplayMode = 'composite'; // 'composite', 'attractant', 'repellent', 'contours'
+    let currentFlowType = 'none'; // 'none', 'left', 'cyclone', 'rift'
+    
     // Mouse Interaction
     let isDrawing = false;
     let brushType = 'attractant'; 
@@ -127,18 +138,16 @@ document.addEventListener("DOMContentLoaded", () => {
     let missionTimeLeft = 0; 
     let missionStatus = 'READY'; 
     
-    // 3. AUDIO SYSTEM (WEB AUDIO API & AMBIENT DRONE SYNTH)
+    // 3. AUDIO SYSTEM
     let audioCtx = null;
     let mainGain = null;
     let isAudioOn = false;
 
-    // Detuned pad chord oscillators
     let padOsc1 = null;
     let padOsc2 = null;
     let padOsc3 = null;
     let padFilter = null;
     let padGain = null;
-    let currentChords = [261.63, 329.63, 392.00]; // C Major default
     
     function initAudio() {
         try {
@@ -147,7 +156,6 @@ document.addEventListener("DOMContentLoaded", () => {
             mainGain.gain.value = parseFloat(volumeControl.value);
             mainGain.connect(audioCtx.destination);
             
-            // DETUNED WARM AMBIENT PAD SYNTH
             padOsc1 = audioCtx.createOscillator();
             padOsc2 = audioCtx.createOscillator();
             padOsc3 = audioCtx.createOscillator();
@@ -155,19 +163,18 @@ document.addEventListener("DOMContentLoaded", () => {
             padGain = audioCtx.createGain();
             
             padOsc1.type = 'triangle';
-            padOsc2.type = 'sawtooth'; // detuned saw
-            padOsc3.type = 'triangle'; // sub base
+            padOsc2.type = 'sawtooth'; 
+            padOsc3.type = 'triangle'; 
             
-            // Initial frequencies (C4, E4, G3)
-            padOsc1.frequency.setValueAtTime(261.63, audioCtx.currentTime); // C4
-            padOsc2.frequency.setValueAtTime(329.63 * 1.004, audioCtx.currentTime); // detuned E4
-            padOsc3.frequency.setValueAtTime(196.00 * 0.5, audioCtx.currentTime); // sub G2
+            padOsc1.frequency.setValueAtTime(261.63, audioCtx.currentTime); 
+            padOsc2.frequency.setValueAtTime(329.63 * 1.004, audioCtx.currentTime); 
+            padOsc3.frequency.setValueAtTime(196.00 * 0.5, audioCtx.currentTime); 
             
             padFilter.type = 'lowpass';
-            padFilter.frequency.setValueAtTime(160, audioCtx.currentTime); // very warm low cutoff
+            padFilter.frequency.setValueAtTime(160, audioCtx.currentTime); 
             padFilter.Q.setValueAtTime(1, audioCtx.currentTime);
             
-            padGain.gain.setValueAtTime(0.04, audioCtx.currentTime); // low ambient volume
+            padGain.gain.setValueAtTime(0.04, audioCtx.currentTime); 
             
             padOsc1.connect(padFilter);
             padOsc2.connect(padFilter);
@@ -192,24 +199,20 @@ document.addEventListener("DOMContentLoaded", () => {
     function updateAmbientDrone() {
         if (!audioCtx || !isAudioOn || !padOsc1) return;
 
-        // Determine biosphere balance (healthy cells vs pathogens)
         const total = healthyCells.length + pathogens.length;
         const ratio = total > 0 ? (healthyCells.length / total) : 0.5;
 
-        let targetChords = [261.63, 329.63, 392.00]; // C Major (C4, E4, G4) - Healthy
+        let targetChords = [261.63, 329.63, 392.00]; 
         let filterCutoff = 180;
 
         if (ratio < 0.45) {
-            // Outbreak: Dissonant C Minor/Diminished (C4, Eb4, F#4)
             targetChords = [261.63, 311.13, 369.99];
-            filterCutoff = 130; // darker tone
+            filterCutoff = 130; 
         } else if (ratio < 0.65) {
-            // Standard: Suspended Chord (C4, F4, G4)
             targetChords = [261.63, 349.23, 392.00];
             filterCutoff = 160;
         }
 
-        // Smoothly ramp pad frequencies over 1.5 seconds
         padOsc1.frequency.exponentialRampToValueAtTime(targetChords[0], audioCtx.currentTime + 1.5);
         padOsc2.frequency.exponentialRampToValueAtTime(targetChords[1] * 1.004, audioCtx.currentTime + 1.5);
         padOsc3.frequency.exponentialRampToValueAtTime(targetChords[2] * 0.5, audioCtx.currentTime + 1.5);
@@ -264,7 +267,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
     
-    // 4. TELEMETRY LOGGER
+    // TELEMETRY LOGGER
     function logEvent(msg) {
         const now = new Date();
         const timeStr = now.toTimeString().split(' ')[0];
@@ -272,7 +275,7 @@ document.addEventListener("DOMContentLoaded", () => {
         logOutput.textContent = newLog + '\n' + logOutput.textContent.split('\n').slice(0, 15).join('\n');
     }
 
-    // 5. HELPER: RANDOM POSITION GENERATOR
+    // RANDOM POSITION GENERATOR
     function getRandomPos() {
         let attempts = 0;
         while (attempts < 100) {
@@ -291,9 +294,8 @@ document.addEventListener("DOMContentLoaded", () => {
         };
     }
 
-    // 6. PRESET MANAGER & LOCALSTORAGE PERSISTENCE
+    // PRESET MANAGER & LOCALSTORAGE PERSISTENCE
     function loadPresets() {
-        // Clear options except defaults
         presetSelector.innerHTML = `
             <option value="balanced">Preset: Balanced</option>
             <option value="hunter">Preset: Hunter</option>
@@ -343,7 +345,6 @@ document.addEventListener("DOMContentLoaded", () => {
             dnaEditor.value = JSON.stringify(defaultPresets[val], null, 2);
             btnApplyDna.click();
         } else {
-            // Check localStorage
             try {
                 const stored = JSON.parse(localStorage.getItem("nanoforge_presets") || "{}");
                 if (stored[val]) {
@@ -354,7 +355,17 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // 7. INITIAL POPULATION SETUP
+    // DISPLAY MODE AND CURRENTS HANDLERS
+    displayModeSelector.addEventListener("change", (e) => {
+        gridDisplayMode = e.target.value;
+    });
+
+    currentsSelector.addEventListener("change", (e) => {
+        currentFlowType = e.target.value;
+        logEvent(`Flow currents advection toggled: ${currentFlowType.toUpperCase()}`);
+    });
+
+    // INITIAL POPULATION SETUP
     function populateChamber() {
         obstacles = [
             { x: SIM_WIDTH * 0.25, y: SIM_HEIGHT * 0.5, r: 35 },
@@ -374,7 +385,6 @@ document.addEventListener("DOMContentLoaded", () => {
         
         for (let i = 0; i < 8; i++) {
             const pos = getRandomPos();
-            // Spawn 1 goliath as boss initially
             const type = (i === 0) ? 'goliath' : 'standard';
             pathogens.push(new Pathogen(pos.x, pos.y, null, type));
         }
@@ -397,7 +407,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     btnSpawnPathogen.addEventListener("click", () => {
         const pos = getRandomPos();
-        // 15% chance to spawn a Goliath manually
         const type = Math.random() < 0.15 ? 'goliath' : 'standard';
         pathogens.push(new Pathogen(pos.x, pos.y, null, type));
         logEvent(`WARNING: Exogenous pathogen (${type}) injected into chamber.`);
@@ -457,7 +466,6 @@ document.addEventListener("DOMContentLoaded", () => {
             path.radius = Math.max(3.5, Math.min(11, path.radius * (1 + (Math.random() - 0.5) * 0.3)));
         });
         
-        // Spawn Goliath pathogens
         for (let i = 0; i < 2; i++) {
             const p = getRandomPos();
             pathogens.push(new Pathogen(p.x, p.y, null, 'goliath'));
@@ -577,7 +585,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // 8. MISSION ENGINE
+    // MISSION ENGINE
     btnStartMission.addEventListener("click", () => {
         initiateMission(missionSelector.value);
     });
@@ -629,7 +637,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
             for (let i = 0; i < 15; i++) {
                 const p = getRandomPos();
-                const pathType = (i === 0) ? 'goliath' : 'standard'; // 1 boss
+                const pathType = (i === 0) ? 'goliath' : 'standard';
                 pathogens.push(new Pathogen(p.x, p.y, null, pathType));
             }
             for (let i = 0; i < 30; i++) {
@@ -687,7 +695,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
             for (let i = 0; i < 12; i++) {
                 const p = getRandomPos();
-                const pathType = (i < 2) ? 'goliath' : 'standard'; // 2 bosses
+                const pathType = (i < 2) ? 'goliath' : 'standard';
                 pathogens.push(new Pathogen(p.x, p.y, null, pathType));
             }
             for (let i = 0; i < 20; i++) {
@@ -751,6 +759,25 @@ document.addEventListener("DOMContentLoaded", () => {
         isRunning = false;
         stateVal.textContent = "HALTED";
         stateVal.className = "stat-value text-pink";
+    }
+
+    // LINEAGE TELEMETRY WRITER
+    function updateLineageTracer() {
+        if (nanobots.length === 0) {
+            lineageConsole.textContent = "Fittest Gen: Gen 0 // ID: --\nDNA: Spd:-- Ang:--\nHistory: No active lineages.";
+            return;
+        }
+        
+        // Find fittest lineage (highest generation count)
+        let fittest = nanobots[0];
+        for (let bot of nanobots) {
+            if (bot.generation > fittest.generation) {
+                fittest = bot;
+            }
+        }
+        
+        const historyStr = fittest.lineageLog.join(" -> ");
+        lineageConsole.textContent = `Fittest Gen: Gen ${fittest.generation} // ID: Bot-${fittest.id}\nDNA: Spd: ${fittest.dna.maxSpeed.toFixed(1)} / Ang: ${fittest.dna.sensorAngle.toFixed(0)}°\nTrace: ${historyStr}`;
     }
 
     // 9. CO-EVOLUTION CHART RENDERING (Nanobots vs Pathogens side-by-side)
@@ -891,15 +918,46 @@ document.addEventListener("DOMContentLoaded", () => {
                     updateAmbientDrone();
                 }
                 
-                grid.update();
+                // Update grid with active currentFlowType
+                grid.update(currentFlowType);
                 
                 if (simTicks % 25 === 0 && foodArray.length < 75) {
                     const pos = getRandomPos();
                     foodArray.push(new Food(pos.x, pos.y));
                 }
                 
+                // FLUID FLOW FIELD APPLIED TO ENTITIES
+                const applyCurrentFlow = (ent) => {
+                    if (currentFlowType === 'left') {
+                        ent.x -= 0.35;
+                    } else if (currentFlowType === 'cyclone') {
+                        // vortex translation forces
+                        const dx = ent.x - 400;
+                        const dy = ent.y - 250;
+                        const dist = Math.hypot(dx, dy) || 1;
+                        const speed = 0.55 / (dist * 0.005 + 1);
+                        ent.vx -= (dy / dist) * speed * 0.12;
+                        ent.vy += (dx / dist) * speed * 0.12;
+                    } else if (currentFlowType === 'rift') {
+                        // thermal uplift
+                        const distToMid = Math.abs(ent.x - 400);
+                        if (distToMid < 200) {
+                            ent.vy -= 0.07; // drift up
+                        } else {
+                            ent.vy += 0.07; // drift down
+                        }
+                    }
+                };
+
                 for (let i = foodArray.length - 1; i >= 0; i--) {
                     foodArray[i].update(grid);
+                    applyCurrentFlow(foodArray[i]);
+                    
+                    // Boundary wrap for food
+                    if (foodArray[i].x < 2) foodArray[i].x = SIM_WIDTH - 2;
+                    if (foodArray[i].y < 2) foodArray[i].y = SIM_HEIGHT - 2;
+                    if (foodArray[i].y > SIM_HEIGHT - 2) foodArray[i].y = 2;
+
                     if (foodArray[i].eaten) {
                         foodArray.splice(i, 1);
                     }
@@ -907,6 +965,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 
                 // Healthy Cells Updates & Mitosis division
                 for (let cell of healthyCells) {
+                    applyCurrentFlow(cell);
                     cell.update(SIM_WIDTH, SIM_HEIGHT, foodArray, obstacles);
                 }
                 
@@ -931,6 +990,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 
                 // Pathogens update
                 for (let path of pathogens) {
+                    applyCurrentFlow(path);
                     path.update(grid, SIM_WIDTH, SIM_HEIGHT, healthyCells, obstacles, triggerAudioSynth);
                 }
                 
@@ -957,6 +1017,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 
                 // Nanobots update
                 for (let bot of nanobots) {
+                    applyCurrentFlow(bot);
                     bot.update(grid, SIM_WIDTH, SIM_HEIGHT, foodArray, pathogens, healthyCells, obstacles, triggerAudioSynth);
                 }
                 
@@ -990,7 +1051,8 @@ document.addEventListener("DOMContentLoaded", () => {
         ctx.fillStyle = '#02040a';
         ctx.fillRect(0, 0, SIM_WIDTH, SIM_HEIGHT);
         
-        grid.draw(ctx);
+        // Draw Chemical Grid glow with selected mode
+        grid.draw(ctx, gridDisplayMode);
         
         // Draw Obstacles (Barriers)
         for (let obs of obstacles) {
@@ -1044,7 +1106,9 @@ document.addEventListener("DOMContentLoaded", () => {
             ratioPathogen.style.width = "50%";
         }
         
+        // Update charts & lineage traces
         updateCharts();
+        updateLineageTracer();
         
         requestAnimationFrame(loop);
     }

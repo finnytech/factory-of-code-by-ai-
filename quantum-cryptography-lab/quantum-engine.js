@@ -1,7 +1,7 @@
 /**
  * Quantum Cryptography Engine - BB84, B92, SARG04 & E91 Protocols
  * Implements physical models: attenuation, WCP multi-photon pulses, PNS attack, decoy states,
- * Cascade reconciliation, and EPR Entanglement-Based QKD (E91 Bell parameter).
+ * Cascade reconciliation, E91 CHSH parameters, and Trusted Node Repeaters.
  */
 
 const BASES = {
@@ -111,28 +111,31 @@ class QKDModule {
         this.lightSourceMode = 'single_photon'; // 'single_photon' or 'wcp'
         this.meanPhotonNumber = 0.5;   // mean photons per pulse (mu)
         this.decoyStatesEnabled = false; // decoy state protocol toggle
+        
+        // NEW: Trusted Node Quantum Repeaters (0: none, 1: 1 node, 2: 2 nodes)
+        this.repeaterNodes = 0;
 
         // Simulation tracking
         this.pulseStates = [];        // SIGNAL, DECOY, or VACUUM
         this.photonCounts = [];        // Number of photons in pulse
         this.aliceBits = [];
         this.aliceBases = [];
-        this.alicePhotons = [];        // States prepared
+        this.alicePhotons = [];        // prepared states
         this.sargAnnouncements = [];   // SARG04 announcements
         
         // E91 Entanglement-based details
-        this.e91BellS = 0;             // CHSH parameter S (theoretical max 2.82)
+        this.e91BellS = 0;
 
         // Eve's interception tracking
         this.eveBases = [];
         this.eveMeasuredBits = [];
         this.evePhotonsSent = [];
-        this.eveLearnedInfo = [];      // Track whether Eve knows this bit (0: no, 1: yes)
+        this.eveLearnedInfo = [];      // 0: no, 1: yes
 
         // Bob's detection tracking
         this.bobBases = [];
         this.bobMeasuredBits = [];
-        this.bobClicks = [];           // Did Bob detect a photon? (true/false)
+        this.bobClicks = [];           // Did Bob detect a photon?
         
         // Results
         this.siftedIndices = [];
@@ -183,7 +186,7 @@ class QKDModule {
                 }
             }
             
-            // Photon numbers in pulse (Poisson coherency)
+            // Photon numbers in pulse
             let count = 1;
             if (this.lightSourceMode === 'wcp') {
                 count = samplePoisson(mu);
@@ -196,11 +199,10 @@ class QKDModule {
             let photon;
             if (this.protocol === PROTOCOLS.B92) {
                 basis = (bit === 0) ? BASES.RECTILINEAR : BASES.DIAGONAL;
-                photon = new QuantumPhoton(0, basis); // H or D
+                photon = new QuantumPhoton(0, basis); // encode H or D
             } else if (this.protocol === PROTOCOLS.E91) {
-                // E91 chooses randomly from three angles: 1 (0 deg), 2 (45 deg), 3 (90 deg)
-                const e91Basis = Math.floor(Math.random() * 3) + 1; // 1, 2, or 3
-                basis = e91Basis.toString(); // Store basis choice as string "1", "2", "3"
+                const e91Basis = Math.floor(Math.random() * 3) + 1;
+                basis = e91Basis.toString();
                 photon = new QuantumPhoton(bit, e91Basis === 2 ? BASES.DIAGONAL : BASES.RECTILINEAR);
             } else {
                 photon = new QuantumPhoton(bit, basis);
@@ -236,7 +238,16 @@ class QKDModule {
         this.bobMeasuredBits = [];
         this.bobClicks = [];
 
-        const channelT = Math.pow(10, -(this.fiberAttenuation * this.distance) / 10);
+        // Dynamic segment distance calculations based on active repeaters
+        const numSegments = this.repeaterNodes + 1;
+        const segmentDistance = this.distance / numSegments;
+
+        if (this.repeaterNodes > 0) {
+            this.log(`Trusted Node network active. Total distance ${this.distance}km divided into ${numSegments} segments of ${segmentDistance.toFixed(1)}km each.`);
+        }
+
+        // Segment transmission coefficient
+        const channelT = Math.pow(10, -(this.fiberAttenuation * segmentDistance) / 10);
         const overallT = channelT * this.detectorEfficiency;
 
         for (let i = 0; i < this.alicePhotons.length; i++) {
@@ -273,7 +284,6 @@ class QKDModule {
                         eveBit = eveLearned === 1 ? this.aliceBits[i] : (Math.random() < 0.5 ? 0 : 1);
                     }
                 } else {
-                    // Standard Intercept-Resend
                     if (photonCount > 0) {
                         eveB = Math.random() < 0.5 ? BASES.RECTILINEAR : BASES.DIAGONAL;
                         const measurement = photon.measure(eveB);
@@ -294,13 +304,12 @@ class QKDModule {
             this.eveMeasuredBits.push(eveBit);
             this.eveLearnedInfo.push(eveLearned);
 
-            // Bob's detection
+            // Bob's detection (over segment length)
             const detectProb = 1 - Math.pow(1 - overallT, photonCount);
             const clickProb = detectProb + this.darkCountRate - (detectProb * this.darkCountRate);
             
             let bobBasis;
             if (this.protocol === PROTOCOLS.E91) {
-                // Bob chooses randomly from angles: 1 (22.5 deg), 2 (67.5 deg), 3 (112.5 deg)
                 const e91BobBasis = Math.floor(Math.random() * 3) + 1;
                 bobBasis = e91BobBasis.toString();
             } else {
@@ -315,25 +324,15 @@ class QKDModule {
                 if (isDarkCount) {
                     this.bobMeasuredBits.push(Math.random() < 0.5 ? 0 : 1);
                 } else {
-                    // Actual measurement (Entangled projection or prepare-and-measure check)
                     if (this.protocol === PROTOCOLS.E91) {
-                        // EPR Singlet state correlation probabilities based on angles:
-                        // Alice bases: 1 (0 deg), 2 (45 deg), 3 (90 deg)
-                        // Bob bases: 1 (22.5 deg), 2 (67.5 deg), 3 (112.5 deg)
-                        const aliceAngle = (parseInt(this.aliceBases[i]) - 1) * 45; // 0, 45, 90
-                        const bobAngle = 22.5 + (parseInt(bobBasis) - 1) * 45;      // 22.5, 67.5, 112.5
+                        const aliceAngle = (parseInt(this.aliceBases[i]) - 1) * 45;
+                        const bobAngle = 22.5 + (parseInt(bobBasis) - 1) * 45;
                         const angleDiffRad = ((aliceAngle - bobAngle) * Math.PI) / 180;
                         
-                        // Singlet state correlation: Bob's bit is anti-correlated with probability cos^2(diff)
-                        // If Eve eavesdropped, the singlet entanglement collapses, rendering classical correlations.
                         let probDiff = Math.pow(Math.cos(angleDiffRad), 2);
-                        
                         if (this.evePresent) {
-                            // Collapse: reduce correlation to classical limits
                             probDiff = 0.5 + 0.25 * Math.cos(2 * angleDiffRad);
                         }
-                        
-                        // Incorporate intrinsic noise Level
                         if (Math.random() < this.noiseLevel) {
                             probDiff = 1 - probDiff;
                         }
@@ -342,7 +341,6 @@ class QKDModule {
                         const bobBit = (Math.random() < probDiff) ? (1 - aliceBit) : aliceBit;
                         this.bobMeasuredBits.push(bobBit);
                     } else {
-                        // BB84, B92, SARG04
                         let measuredPhoton = finalPhoton;
                         if (Math.random() < this.noiseLevel) {
                             measuredPhoton = new QuantumPhoton(finalPhoton.bit === 0 ? 1 : 0, finalPhoton.basis);
@@ -401,12 +399,9 @@ class QKDModule {
                     if (basis === BASES.RECTILINEAR && rawBit === 1) { match = true; decodedBit = 1; }
                 }
             } else if (this.protocol === PROTOCOLS.E91) {
-                // In E91, sifting key is formed when bases indices align
-                // Since states are singlet-entangled, Bob's bit is anti-correlated.
-                // We flip Bob's bit to align with Alice's bit.
                 match = (this.aliceBases[i] === this.bobBases[i]);
                 if (match) {
-                    decodedBit = 1 - this.bobMeasuredBits[i]; // Flip to match Alice
+                    decodedBit = 1 - this.bobMeasuredBits[i];
                 }
             }
 
@@ -545,38 +540,24 @@ class QKDModule {
      * CHSH Bell inequality parameter S calculator for E91
      */
     calculateE91BellS() {
-        // We calculate S based on the four correlations:
-        // S = E(A1, B1) - E(A1, B3) + E(A3, B1) + E(A3, B3)
-        // Alice bases: 1 (0 deg), 3 (90 deg)
-        // Bob bases: 1 (22.5 deg), 3 (112.5 deg)
-        
         const computeCorrelation = (aliceB, bobB) => {
             let same = 0;
             let diff = 0;
-            
             for (let i = 0; i < this.aliceBits.length; i++) {
                 if (this.bobClicks[i] && this.aliceBases[i] === aliceB && this.bobBases[i] === bobB) {
-                    if (this.aliceBits[i] === this.bobMeasuredBits[i]) {
-                        same++;
-                    } else {
-                        diff++;
-                    }
+                    if (this.aliceBits[i] === this.bobMeasuredBits[i]) same++;
+                    else diff++;
                 }
             }
-            
             const total = same + diff;
             if (total === 0) {
-                // If no empirical data, calculate theoretical value based on physics and Eve's presence
                 const aliceAngle = (parseInt(aliceB) - 1) * 45;
                 const bobAngle = 22.5 + (parseInt(bobB) - 1) * 45;
                 const angleDiffRad = ((aliceAngle - bobAngle) * Math.PI) / 180;
-                
                 let corr = -Math.cos(2 * angleDiffRad);
-                if (this.evePresent) corr *= 0.5; // entanglement collapsed
+                if (this.evePresent) corr *= 0.5;
                 return corr;
             }
-            
-            // Correlation coefficient E = (N_same - N_diff) / N_total
             return (same - diff) / total;
         };
 
@@ -585,10 +566,8 @@ class QKDModule {
         const E31 = computeCorrelation('3', '1');
         const E33 = computeCorrelation('3', '3');
         
-        // CHSH Bell parameter: S = E11 - E13 + E31 + E33
-        // Note: For singlet correlation values, absolute sum yields 2.82 under ideal cases.
         this.e91BellS = Math.abs(E11 - E13 + E31 + E33);
-        this.log(`CHSH Bell Parameter S calculated: ${this.e91BellS.toFixed(3)} (E11: ${E11.toFixed(2)}, E13: ${E13.toFixed(2)}, E31: ${E31.toFixed(2)}, E33: ${E33.toFixed(2)}).`);
+        this.log(`CHSH Bell Parameter S calculated: ${this.e91BellS.toFixed(3)}.`);
     }
 
     estimateErrorAndCorrect() {
@@ -599,7 +578,7 @@ class QKDModule {
             return;
         }
 
-        // Calculate QBER
+        // QBER estimation
         const sampleSize = Math.max(1, Math.floor(this.siftedIndices.length * 0.3));
         let mismatches = 0;
 
@@ -612,7 +591,6 @@ class QKDModule {
         this.qber = mismatches / sampleSize;
         this.log(`QBER: ${(this.qber * 100).toFixed(1)}% (Estimated from ${sampleSize} bits).`);
 
-        // If E91, calculate Bell S parameter
         if (this.protocol === PROTOCOLS.E91) {
             this.calculateE91BellS();
         }
@@ -627,7 +605,6 @@ class QKDModule {
             this.log("CRITICAL SECURITY ALERT: PNS attack detected. Without decoy states, the key is fully compromised!");
         }
 
-        // Under E91, Bell parameter S <= 2 indicates entanglement collapsed (eavesdropping detected)
         if (this.protocol === PROTOCOLS.E91 && this.evePresent && this.e91BellS <= 2.1) {
             isCompromised = true;
             this.log(`CRITICAL SECURITY ALERT: Bell Inequality violation check failed (S = ${this.e91BellS.toFixed(2)} <= 2.0). Entanglement collapsed!`);
@@ -640,6 +617,19 @@ class QKDModule {
         } else {
             const cascadeResult = this.cascadeReconciliation(remainingKeyAlice, remainingKeyBob);
             this.cascadeLogs = cascadeResult.logs;
+            
+            // NEW: Trusted Node Classical Key Aggregation Logging
+            if (this.repeaterNodes > 0) {
+                const logs = this.cascadeLogs;
+                const num = this.repeaterNodes;
+                
+                logs.push(`Trusted Nodes classical key routing triggered:`);
+                for (let r = 1; r <= num; r++) {
+                    logs.push(`  -> Segment ${r} Key (K${r}) reconciled successfully with Node ${r}.`);
+                }
+                logs.push(`  -> Node XOR chaining broadcasted (One-Time Pad): Bob received K${num + 1} secure payload.`);
+            }
+            
             this.secureKey = cascadeResult.key;
             this.log(`Key reconciled via Cascade. Reconciled key: ${this.secureKey.length} bits.`);
         }
@@ -686,11 +676,15 @@ class QKDModule {
         if (this.protocol === PROTOCOLS.B92 || this.protocol === PROTOCOLS.SARG04) {
             siftFactor = 0.25;
         } else if (this.protocol === PROTOCOLS.E91) {
-            siftFactor = 0.333; // E91 (Alice and Bob match 1/3 bases)
+            siftFactor = 0.333;
         }
 
+        // Calculate rate over individual segment distance (d / (repeaterNodes + 1))
+        const numSegments = this.repeaterNodes + 1;
+
         distances.forEach(d => {
-            const channelT = Math.pow(10, -(alpha * d) / 10);
+            const segmentD = d / numSegments;
+            const channelT = Math.pow(10, -(alpha * segmentD) / 10);
             const eta = channelT * eta_b;
 
             // 1. Ideal Single Photon

@@ -2,7 +2,7 @@ const { chromium } = require('playwright');
 const path = require('path');
 
 (async () => {
-  console.log("Starting NanoForge Automated Integration Test (Iteration 3)...");
+  console.log("Starting NanoForge Automated Integration Test (Iteration 4)...");
   const browser = await chromium.launch();
   const page = await browser.newPage();
 
@@ -20,11 +20,10 @@ const path = require('path');
     }
   });
 
-  // Handle javascript prompts for preset saving
   page.on('dialog', async dialog => {
     console.log(`Dialog popped: [${dialog.type()}] "${dialog.message()}"`);
     if (dialog.type() === 'prompt') {
-      await dialog.accept('AutoTestPreset');
+      await dialog.accept('TestLinearLineage');
     } else {
       await dialog.dismiss();
     }
@@ -63,6 +62,16 @@ const path = require('path');
   // Test Save Preset dialog
   console.log("Testing Save Preset dialog interaction...");
   await page.click('#btn-save-preset');
+  await page.waitForTimeout(500);
+
+  // Test display mode filter select
+  console.log("Testing display spectrometer filter selector...");
+  await page.selectOption('#display-mode-selector', 'contours');
+  await page.waitForTimeout(500);
+
+  // Test currents flow select
+  console.log("Testing chamber currents selector...");
+  await page.selectOption('#currents-selector', 'cyclone');
   await page.waitForTimeout(500);
 
   // Initiate Pathogen Purge mission

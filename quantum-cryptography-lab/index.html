@@ -36,6 +36,16 @@
                         <option value="E91">E91 (Entanglement-based)</option>
                     </select>
                 </div>
+
+                <!-- NEW: Quantum Repeaters (Trusted Nodes) dropdown -->
+                <div class="control-group" id="repeater-container">
+                    <label for="repeater-select">Quantum Repeaters (Trusted Nodes)</label>
+                    <select id="repeater-select" class="form-select">
+                        <option value="0" selected>Point-to-Point (No Repeaters)</option>
+                        <option value="1">1 Trusted Node Repeater</option>
+                        <option value="2">2 Trusted Node Repeaters</option>
+                    </select>
+                </div>
                 
                 <div class="control-group">
                     <label for="key-length-slider">
@@ -292,7 +302,7 @@
                 </div>
             </div>
 
-            <!-- NEW: Quantum Eavesdropper Forensic Analyzer widget card -->
+            <!-- Quantum Eavesdropper Forensic Analyzer widget card -->
             <div class="glass-card console-card" style="margin-bottom: 1.5rem;" id="forensics-card">
                 <h3 class="card-title">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--neon-orange);"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
@@ -322,7 +332,7 @@
                     <div style="width: 42px;"></div>
                 </div>
                 <div class="terminal-body" id="terminal-console">
-                    <div class="log-line"><span>[13:30:00]</span> Physical Quantum Cryptography Lab active. Poisson coherent laser sources calibrated.</div>
+                    <div class="log-line"><span>[16:16:00]</span> Physical Quantum Cryptography Lab active. Poisson coherent laser sources calibrated.</div>
                 </div>
             </div>
 

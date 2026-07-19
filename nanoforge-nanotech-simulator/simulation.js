@@ -19,9 +19,13 @@ class ChemicalGrid {
         this.imageData = this.offscreenCtx.createImageData(cols, rows);
     }
     
-    update() {
+    update(currentType = 'none') {
+        // Diffuse
         this.diffuse(this.attractant, 0.22, 0.94);
         this.diffuse(this.repellent, 0.22, 0.94);
+        
+        // Fluid currents advection advect
+        this.advect(currentType);
     }
     
     diffuse(grid, rate, decay) {
@@ -54,6 +58,88 @@ class ChemicalGrid {
         
         grid.set(this.temp);
     }
+
+    advect(currentType) {
+        const cols = this.cols;
+        const rows = this.rows;
+        
+        if (currentType === 'left') {
+            // Drift left: shift rows left
+            for (let y = 0; y < rows; y++) {
+                const offset = y * cols;
+                const wrapAttr = this.attractant[offset];
+                const wrapRep = this.repellent[offset];
+                for (let x = 0; x < cols - 1; x++) {
+                    this.attractant[offset + x] = this.attractant[offset + x + 1];
+                    this.repellent[offset + x] = this.repellent[offset + x + 1];
+                }
+                this.attractant[offset + cols - 1] = wrapAttr * 0.94;
+                this.repellent[offset + cols - 1] = wrapRep * 0.94;
+            }
+        } else if (currentType === 'cyclone') {
+            // Vortex circular drift
+            const cx = cols / 2;
+            const cy = rows / 2;
+            this.temp.fill(0);
+            const tempRep = new Float32Array(cols * rows);
+            
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < cols; x++) {
+                    const idx = y * cols + x;
+                    const valAttr = this.attractant[idx];
+                    const valRep = this.repellent[idx];
+                    if (valAttr < 0.01 && valRep < 0.01) continue;
+                    
+                    const dx = x - cx;
+                    const dy = y - cy;
+                    const speed = 0.55 / (Math.hypot(dx, dy) * 0.08 + 1);
+                    
+                    const rx = Math.round(x - dy * speed);
+                    const ry = Math.round(y + dx * speed);
+                    
+                    if (rx >= 0 && rx < cols && ry >= 0 && ry < rows) {
+                        const targetIdx = ry * cols + rx;
+                        this.temp[targetIdx] += valAttr * 0.98;
+                        tempRep[targetIdx] += valRep * 0.98;
+                    }
+                }
+            }
+            this.attractant.set(this.temp);
+            this.repellent.set(tempRep);
+        } else if (currentType === 'rift') {
+            // Thermal Rift: upward middle flow, downward boundaries
+            const mid = cols / 2;
+            this.temp.fill(0);
+            const tempRep = new Float32Array(cols * rows);
+            
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < cols; x++) {
+                    const idx = y * cols + x;
+                    const valAttr = this.attractant[idx];
+                    const valRep = this.repellent[idx];
+                    if (valAttr < 0.01 && valRep < 0.01) continue;
+                    
+                    const distToMid = Math.abs(x - mid);
+                    const isUp = distToMid < cols * 0.25;
+                    let ry = y;
+                    
+                    if (isUp) {
+                        ry = y - 1; // rise up
+                    } else {
+                        ry = y + 1; // drift down
+                    }
+                    
+                    if (ry >= 0 && ry < rows) {
+                        const targetIdx = ry * cols + x;
+                        this.temp[targetIdx] += valAttr * 0.98;
+                        tempRep[targetIdx] += valRep * 0.98;
+                    }
+                }
+            }
+            this.attractant.set(this.temp);
+            this.repellent.set(tempRep);
+        }
+    }
     
     addVal(x, y, type, amount) {
         const col = Math.floor(Math.max(0, Math.min(this.width - 1, x)) / this.cellWidth);
@@ -79,7 +165,39 @@ class ChemicalGrid {
         this.repellent.fill(0);
     }
     
-    draw(ctx) {
+    draw(ctx, mode = 'composite') {
+        if (mode === 'contours') {
+            // High fidelity holographic contour lines rendering
+            ctx.save();
+            ctx.lineWidth = 1;
+            
+            for (let y = 0; y < this.rows; y++) {
+                const rowOffset = y * this.cols;
+                for (let x = 0; x < this.cols; x++) {
+                    const idx = rowOffset + x;
+                    const attrVal = this.attractant[idx];
+                    const repVal = this.repellent[idx];
+                    const maxVal = Math.max(attrVal, repVal);
+                    if (maxVal > 0.05) {
+                        if (attrVal > repVal) {
+                            ctx.fillStyle = `rgba(0, 240, 255, ${Math.min(0.24, maxVal * 0.08)})`;
+                            ctx.strokeStyle = `rgba(0, 240, 255, ${Math.min(0.35, maxVal * 0.22)})`;
+                        } else {
+                            ctx.fillStyle = `rgba(255, 0, 127, ${Math.min(0.24, maxVal * 0.08)})`;
+                            ctx.strokeStyle = `rgba(255, 0, 127, ${Math.min(0.35, maxVal * 0.22)})`;
+                        }
+                        ctx.beginPath();
+                        ctx.rect(x * this.cellWidth + 1, y * this.cellHeight + 1, this.cellWidth - 2, this.cellHeight - 2);
+                        ctx.fill();
+                        ctx.stroke();
+                    }
+                }
+            }
+            ctx.restore();
+            return;
+        }
+
+        // Standard putImageData stretching
         const data = this.imageData.data;
         const totalCells = this.cols * this.rows;
         
@@ -88,10 +206,23 @@ class ChemicalGrid {
             const repVal = Math.floor(Math.min(255, this.repellent[i] * 90));
             
             const pxIdx = i * 4;
-            data[pxIdx] = repVal;                      // Red = repellent
-            data[pxIdx + 1] = Math.floor((attrVal + repVal) * 0.1); 
-            data[pxIdx + 2] = attrVal;                 // Blue = attractant
-            data[pxIdx + 3] = Math.max(attrVal, repVal) * 0.25; 
+            
+            if (mode === 'composite') {
+                data[pxIdx] = repVal; 
+                data[pxIdx + 1] = Math.floor((attrVal + repVal) * 0.1); 
+                data[pxIdx + 2] = attrVal; 
+                data[pxIdx + 3] = Math.max(attrVal, repVal) * 0.25; 
+            } else if (mode === 'attractant') {
+                data[pxIdx] = 0;
+                data[pxIdx + 1] = attrVal * 0.15;
+                data[pxIdx + 2] = attrVal;
+                data[pxIdx + 3] = attrVal * 0.25;
+            } else if (mode === 'repellent') {
+                data[pxIdx] = repVal;
+                data[pxIdx + 1] = 0;
+                data[pxIdx + 2] = repVal * 0.2;
+                data[pxIdx + 3] = repVal * 0.25;
+            }
         }
         
         this.offscreenCtx.putImageData(this.imageData, 0, 0);
@@ -148,14 +279,13 @@ class Food {
     }
 }
 
-// PATHOGEN CLASS (With Standard vs Goliath specialization)
+// PATHOGEN CLASS
 class Pathogen {
     constructor(x, y, dna = null, type = 'standard') {
         this.x = x;
         this.y = y;
         this.type = type;
         
-        // Genes
         this.dna = dna ?? {
             maxSpeed: type === 'goliath' ? 0.95 : 1.6,
             radius: type === 'goliath' ? 14 : 6,
@@ -172,10 +302,9 @@ class Pathogen {
     }
     
     update(grid, width, height, healthyCells, obstacles, triggerAudioCallback) {
-        // Emit toxin chemical repellent (Goliaths emit much higher amounts)
         if (this.type === 'goliath') {
             grid.addVal(this.x, this.y, 'repellent', 0.85);
-            this.energy -= 0.22; // higher metabolic cost
+            this.energy -= 0.22;
         } else {
             grid.addVal(this.x, this.y, 'repellent', 0.35);
             this.energy -= 0.14;
@@ -218,7 +347,6 @@ class Pathogen {
         
         resolveObstacleCollision(this, obstacles);
         
-        // Boundaries
         if (this.x < this.radius) { this.x = this.radius; this.vx *= -1; }
         if (this.x > width - this.radius) { this.x = width - this.radius; this.vx *= -1; }
         if (this.y < this.radius) { this.y = this.radius; this.vy *= -1; }
@@ -240,7 +368,7 @@ class Pathogen {
     reproduce() {
         const threshold = this.type === 'goliath' ? 480 : 200;
         if (this.energy > threshold) {
-            this.energy *= 0.48; // split energy
+            this.energy *= 0.48; 
             
             const mutateVal = (val, rate) => {
                 const modifier = 1 + (Math.random() - 0.5) * 2 * rate;
@@ -248,7 +376,6 @@ class Pathogen {
             };
             
             const mr = this.dna.mutationRate;
-            // 6% chance of standard pathogen mutating into a Goliath
             const childType = (this.type === 'goliath' || Math.random() < 0.06) ? 'goliath' : 'standard';
             
             const childDna = {
@@ -278,13 +405,11 @@ class Pathogen {
         ctx.shadowBlur = 12;
         
         if (this.type === 'goliath') {
-            // Draw Goliath boss cell (Pulsing glowing violet/magenta structure)
             ctx.shadowColor = '#7f00ff';
             ctx.strokeStyle = '#ffffff';
             ctx.lineWidth = 1.8;
             ctx.fillStyle = 'rgba(127, 0, 255, 0.7)';
             
-            // Outer spike ring
             ctx.beginPath();
             const spikes = 9;
             for (let i = 0; i < spikes * 2; i++) {
@@ -299,7 +424,6 @@ class Pathogen {
             ctx.fill();
             ctx.stroke();
             
-            // Central radioactive core
             ctx.shadowColor = '#ff007f';
             ctx.fillStyle = '#ff007f';
             ctx.beginPath();
@@ -309,7 +433,6 @@ class Pathogen {
             return;
         }
         
-        // Standard Pathogen Drawing
         const speedRatio = Math.max(0, Math.min(1, (this.maxSpeed - 0.8) / 2.7));
         const r = Math.floor(255 - speedRatio * 150);
         const g = 0;

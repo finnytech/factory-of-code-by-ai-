@@ -1,7 +1,7 @@
 /**
  * Quantum Cryptography Lab - Application Logic & Visualization
  * Binds QKD physical models, Cascade reconciliation, E91 CHSH Bell parameters,
- * Security Forensics, and Web Audio SFX to the GUI.
+ * Security Forensics, Quantum Repeaters, and Web Audio SFX to the GUI.
  */
 
 // Procedural Web Audio Synth Class
@@ -180,6 +180,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const muSlider = document.getElementById('mu-slider');
     const muVal = document.getElementById('mu-val');
     
+    // Quantum Repeaters
+    const repeaterSelect = document.getElementById('repeater-select');
+    const repeaterContainer = document.getElementById('repeater-container');
+    
     // Containers to toggle on protocol change
     const lightSourceContainer = document.getElementById('light-source-container');
     const muContainer = document.getElementById('mu-container');
@@ -297,6 +301,11 @@ document.addEventListener('DOMContentLoaded', () => {
             muContainer.style.display = 'none';
             decoyContainer.style.display = 'none';
             
+            // Entanglement disables classical repeaters
+            repeaterContainer.style.display = 'none';
+            repeaterSelect.value = "0";
+            qkd.repeaterNodes = 0;
+            
             wizardTitleAlice.textContent = '1. EPR Source';
             wizardDescAlice.textContent = 'Singlet Pairs';
             visualizerHeader.textContent = 'Quantum Channel Visualizer (E91 Entangled Singlet Source)';
@@ -316,6 +325,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (eveStrategySelect.value === 'pns') eveStrategySelect.value = 'intercept_resend';
         } else {
             lightSourceContainer.style.display = 'block';
+            repeaterContainer.style.display = 'block';
             if (sourceModeSelect.value === 'wcp') {
                 muContainer.style.display = 'block';
                 decoyContainer.style.display = 'flex';
@@ -339,6 +349,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         
+        drawChart();
+    });
+    
+    // Bind Quantum repeaters selector
+    repeaterSelect.addEventListener('change', (e) => {
+        qkd.repeaterNodes = parseInt(e.target.value);
+        logConsole(`Quantum trusted repeaters set to: ${qkd.repeaterNodes} nodes.`);
         drawChart();
     });
     
@@ -595,7 +612,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
-        // Threat styles
         sigEl.style.color = 'var(--neon-orange)';
         sigEl.style.textShadow = 'var(--glow-orange)';
         sigEl.style.borderColor = 'rgba(255, 125, 0, 0.2)';
@@ -708,7 +724,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.font = '9px Outfit';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(qkd.protocol === 'E91' ? 'ALICE' : 'ALICE', transmitterX, middleY);
+        ctx.fillText('ALICE', transmitterX, middleY);
         ctx.restore();
         
         // 3. Bob
@@ -749,7 +765,36 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.restore();
         }
         
-        // 5. Eve
+        // 5. Trusted Node Repeaters (if active and not E91)
+        let repeaterPositions = [];
+        if (qkd.repeaterNodes > 0 && qkd.protocol !== 'E91') {
+            const num = qkd.repeaterNodes;
+            const stepSize = (receiverX - transmitterX) / (num + 1);
+            for (let idx = 1; idx <= num; idx++) {
+                const nodeX = transmitterX + idx * stepSize;
+                repeaterPositions.push(nodeX);
+                
+                ctx.save();
+                ctx.fillStyle = 'rgba(16, 20, 38, 0.9)';
+                ctx.strokeStyle = 'var(--neon-cyan)';
+                ctx.lineWidth = 1.5;
+                ctx.shadowBlur = 6;
+                ctx.shadowColor = 'var(--neon-cyan)';
+                ctx.beginPath();
+                ctx.roundRect(nodeX - 18, middleY - 12, 36, 24, 4);
+                ctx.fill();
+                ctx.stroke();
+                
+                ctx.fillStyle = '#fff';
+                ctx.font = '8px Outfit';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(`R-NODE ${idx}`, nodeX, middleY);
+                ctx.restore();
+            }
+        }
+        
+        // 6. Eve
         const eveX = qkd.protocol === 'E91' ? (midX + receiverX) / 2 : (transmitterX + receiverX) / 2;
         if (qkd.evePresent) {
             ctx.save();
@@ -770,7 +815,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.restore();
         }
         
-        // 6. Photons
+        // 7. Photons
         let activePhotons = [];
         for (let i = 0; i < photons.length; i++) {
             let photon = photons[i];
@@ -791,6 +836,19 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             if (photon.alpha <= 0) continue;
+            
+            // Trusted Repeater intermediate sifting check (photons cross repeater position)
+            if (!photon.absorbed && qkd.repeaterNodes > 0 && qkd.protocol !== 'E91') {
+                photon.nodeExploded = photon.nodeExploded || {};
+                repeaterPositions.forEach((nodeX, idx) => {
+                    if (!photon.nodeExploded[nodeX] && photon.x >= nodeX) {
+                        photon.nodeExploded[nodeX] = true;
+                        createExplosion(nodeX, middleY, 'var(--neon-cyan)', 6);
+                        synth.playClick(1000 + idx * 100);
+                        logConsole(`Repeater Node ${idx + 1}: Registered segment photon click for Pulse #${photon.index + 1}`);
+                    }
+                });
+            }
             
             // Eve Intercept
             if (qkd.evePresent && !photon.intercepted && !photon.absorbed) {
@@ -1068,6 +1126,7 @@ document.addEventListener('DOMContentLoaded', () => {
         tempModule.meanPhotonNumber = qkd.meanPhotonNumber;
         tempModule.noiseLevel = qkd.noiseLevel;
         tempModule.protocol = qkd.protocol;
+        tempModule.repeaterNodes = qkd.repeaterNodes; // Copy repeater nodes to chart simulator!
         
         const currRates = tempModule.calculateTheoreticalKeyRates([currD]);
         let currR = 0;
@@ -1168,7 +1227,7 @@ document.addEventListener('DOMContentLoaded', () => {
             btnStep.textContent = "Simulation Reset";
             qkd.estimateErrorAndCorrect();
             
-            // Print Cascade interactive error correction logs
+            // Print Cascade logs
             if (simulationResults && simulationResults.cascadeLogs) {
                 simulationResults.cascadeLogs.forEach(line => {
                     logConsole(`[Cascade EC] ${line}`);
@@ -1183,7 +1242,7 @@ document.addEventListener('DOMContentLoaded', () => {
             updateStatsRow();
             renderFinalKeys();
             
-            // Evaluate active security forensics
+            // Evaluate security forensics
             runSecurityForensics();
             
             checkChallengeOutcomes();
@@ -1492,6 +1551,7 @@ document.addEventListener('DOMContentLoaded', () => {
             qkd.evePresent = eveToggle.checked;
             qkd.eveStrategy = eveStrategySelect.value;
             qkd.protocol = protocolSelect.value;
+            qkd.repeaterNodes = parseInt(repeaterSelect.value); // Sync repeaters!
             
             const dcExp = darkCountSlider.value;
             qkd.darkCountRate = Math.pow(10, -parseInt(dcExp));

@@ -201,6 +201,7 @@ main {
 
 .environmental-grid {
     grid-template-columns: 1fr 1fr;
+    gap: 8px;
 }
 
 .btn-span-2 {
@@ -324,7 +325,27 @@ main {
     margin-top: 5px;
 }
 
-/* DNA HEADER Presets Selector */
+/* ENVIRONMENTAL FLOW SELECTOR */
+.currents-select {
+    font-family: var(--font-heading);
+    font-size: 0.65rem;
+    font-weight: bold;
+    background: #0d1426;
+    color: var(--neon-gold);
+    border: 1px solid rgba(255, 170, 0, 0.3);
+    border-radius: 4px;
+    padding: 6px;
+    outline: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.currents-select:hover, .currents-select:focus {
+    border-color: var(--neon-gold);
+    box-shadow: var(--glow-gold-shadow);
+}
+
+/* DNA PRESETS SELECTOR */
 .dna-header-row {
     display: flex;
     justify-content: space-between;
@@ -478,6 +499,42 @@ main {
     box-shadow: 0 0 4px var(--neon-pink);
 }
 
+/* CANVAS SPECTROMETER FOOTER FILTER */
+.canvas-footer-row {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    margin-top: 2px;
+}
+
+.spectrometer-filter-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    font-family: var(--font-heading);
+}
+
+.spectrometer-select {
+    font-family: var(--font-heading);
+    font-size: 0.62rem;
+    font-weight: bold;
+    background: #090f1e;
+    color: var(--neon-cyan);
+    border: 1px solid rgba(0, 240, 255, 0.25);
+    border-radius: 4px;
+    padding: 3px 6px;
+    outline: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.spectrometer-select:hover {
+    border-color: var(--neon-cyan);
+    box-shadow: 0 0 4px rgba(0, 240, 255, 0.2);
+}
+
 /* LEGEND */
 .legend {
     display: flex;
@@ -549,7 +606,7 @@ main {
 
 /* PROCEDURAL CHARTS */
 .chart-container {
-    height: 90px;
+    height: 75px;
     background: rgba(0, 0, 0, 0.3);
     border: 1px solid rgba(255, 255, 255, 0.03);
     border-radius: 4px;
@@ -560,6 +617,21 @@ main {
     width: 100%;
     height: 100%;
     display: block;
+}
+
+/* LINEAGE TRACKER DISPLAY PANEL */
+.lineage-display {
+    background: #010307;
+    border: 1px solid rgba(0, 240, 255, 0.15);
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: #4df6ff;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    max-height: 52px;
+    overflow-y: auto;
 }
 
 /* MISSION SYSTEM DISPLAY PANEL */
@@ -632,7 +704,7 @@ main {
 
 .log-console {
     flex-grow: 1;
-    min-height: 70px;
+    min-height: 60px;
     background: #010307;
     border: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: 4px;

@@ -8,6 +8,7 @@ class Nanobot {
         this.radius = 5;
         this.energy = 100;
         this.generation = generation;
+        this.id = Math.floor(Math.random() * 9000 + 1000);
         
         // DNA Genes
         this.dna = {
@@ -20,6 +21,9 @@ class Nanobot {
             maxSpeed: dna.maxSpeed ?? 2.2,
             mutationRate: dna.mutationRate ?? 0.15
         };
+        
+        // Lineage logs tracking mutations
+        this.lineageLog = dna.lineageLog ?? ["Origin Preset"];
         
         this.sensorPositions = {
             left: { x: 0, y: 0 },
@@ -160,7 +164,6 @@ class Nanobot {
         for (let path of pathogens) {
             if (path.energy > 0 && Math.hypot(path.x - this.x, path.y - this.y) < (this.radius + path.radius)) {
                 if (path.type === 'goliath') {
-                    // Battle Goliath: drain energy, obtain power, bounce off
                     path.energy -= 100;
                     this.energy = Math.min(220, this.energy + 35);
                     
@@ -172,7 +175,6 @@ class Nanobot {
                     
                     if (triggerAudioCallback) triggerAudioCallback('destroy');
                 } else {
-                    // Neutralize standard pathogen instantly
                     path.energy = 0; 
                     this.energy += 40; 
                     if (triggerAudioCallback) triggerAudioCallback('destroy');
@@ -213,12 +215,32 @@ class Nanobot {
                 mutationRate: Math.max(0.01, Math.min(0.5, mutateVal(this.dna.mutationRate, mr)))
             };
             
+            // Record mutation delta to lineage history
+            const speedDelta = childDna.maxSpeed - this.dna.maxSpeed;
+            const angleDelta = childDna.sensorAngle - this.dna.sensorAngle;
+            let step = `Gen ${this.generation + 1}: `;
+            
+            if (Math.abs(speedDelta) > 0.05) {
+                step += `Spd ${speedDelta > 0 ? '+' : ''}${speedDelta.toFixed(1)} `;
+            }
+            if (Math.abs(angleDelta) > 1.5) {
+                step += `Ang ${angleDelta > 0 ? '+' : ''}${angleDelta.toFixed(0)}°`;
+            }
+            if (step.endsWith(": ")) {
+                step += "Minor Drift";
+            }
+            
+            const nextLineage = [...this.lineageLog, step];
+            childDna.lineageLog = nextLineage;
+            
             const offsetDist = this.radius * 2.5;
             const angle = Math.random() * Math.PI * 2;
             const cx = this.x + Math.cos(angle) * offsetDist;
             const cy = this.y + Math.sin(angle) * offsetDist;
             
-            return new Nanobot(cx, cy, childDna, this.generation + 1);
+            const child = new Nanobot(cx, cy, childDna, this.generation + 1);
+            child.id = Math.floor(Math.random() * 9000 + 1000);
+            return child;
         }
         return null;
     }

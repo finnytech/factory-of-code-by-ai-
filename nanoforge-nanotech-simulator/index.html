@@ -65,6 +65,14 @@
                         <button id="btn-spray-repellent" class="btn btn-outline-pink">SPRAY REPELLENT</button>
                         <button id="btn-spray-obstacle" class="btn btn-outline-gold">PAINT BARRIERS</button>
                         <button id="btn-mutagenic-storm" class="btn btn-outline-gold">MUTAGENIC PULSE</button>
+                        
+                        <select id="currents-selector" class="currents-select btn-span-2">
+                            <option value="none">Currents: Static State</option>
+                            <option value="left">Currents: Laminar Left Flow</option>
+                            <option value="cyclone">Currents: Vortex Cyclone</option>
+                            <option value="rift">Currents: Thermal Vent Rift</option>
+                        </select>
+                        
                         <button id="btn-clear-all" class="btn btn-danger btn-span-2">PURGE CHAMBER</button>
                     </div>
                 </div>
@@ -115,6 +123,17 @@
                     <div id="ratio-healthy" class="ratio-segment segment-healthy" style="width: 50%;"></div>
                     <div id="ratio-pathogen" class="ratio-segment segment-pathogen" style="width: 50%;"></div>
                 </div>
+                <div class="canvas-footer-row">
+                    <div class="spectrometer-filter-group">
+                        <label for="display-mode-selector">SPECTROMETER FILTER: </label>
+                        <select id="display-mode-selector" class="spectrometer-select">
+                            <option value="composite">Composite Overlay</option>
+                            <option value="attractant">Attractant Field Only</option>
+                            <option value="repellent">Repellent Field Only</option>
+                            <option value="contours">Grid Density Contours</option>
+                        </select>
+                    </div>
+                </div>
                 <div class="legend">
                     <span class="legend-item"><span class="legend-dot bg-cyan"></span>Nanobots</span>
                     <span class="legend-item"><span class="legend-dot bg-pink"></span>Pathogens</span>
@@ -149,10 +168,19 @@
                     </div>
                 </div>
 
-                <div class="control-group flex-grow">
+                <div class="control-group">
                     <span class="group-label">CO-EVOLUTIONARY SPEED MUTATIONS</span>
                     <div class="chart-container">
                         <canvas id="mutation-chart"></canvas>
+                    </div>
+                </div>
+
+                <!-- NEW: LINEAGE ANCESTRY TRACER -->
+                <div class="control-group" id="lineage-panel">
+                    <span class="group-label">LINEAGE ANCESTRY TRACER</span>
+                    <div id="lineage-console" class="lineage-display">
+                        Fittest Gen: Gen 0 // ID: --
+                        Mutational History: Free sandbox initialized.
                     </div>
                 </div>
 

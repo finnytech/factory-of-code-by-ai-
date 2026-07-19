@@ -135,10 +135,9 @@ class Nanobot {
         this.x += this.vx;
         this.y += this.vy;
         
-        // Handle obstacle reflections
         resolveObstacleCollision(this, obstacles);
         
-        // Soft boundary avoidance
+        // Boundaries
         const pad = 25;
         if (this.x < pad) this.vx += 0.35;
         if (this.x > width - pad) this.vx -= 0.35;
@@ -157,12 +156,27 @@ class Nanobot {
             }
         }
         
-        // Collision: neutralize pathogen
+        // Collision: combat pathogens
         for (let path of pathogens) {
             if (path.energy > 0 && Math.hypot(path.x - this.x, path.y - this.y) < (this.radius + path.radius)) {
-                path.energy = 0; 
-                this.energy += 40; 
-                if (triggerAudioCallback) triggerAudioCallback('destroy');
+                if (path.type === 'goliath') {
+                    // Battle Goliath: drain energy, obtain power, bounce off
+                    path.energy -= 100;
+                    this.energy = Math.min(220, this.energy + 35);
+                    
+                    let dx = this.x - path.x;
+                    let dy = this.y - path.y;
+                    const d = Math.hypot(dx, dy) || 1;
+                    this.vx = (dx / d) * this.dna.maxSpeed;
+                    this.vy = (dy / d) * this.dna.maxSpeed;
+                    
+                    if (triggerAudioCallback) triggerAudioCallback('destroy');
+                } else {
+                    // Neutralize standard pathogen instantly
+                    path.energy = 0; 
+                    this.energy += 40; 
+                    if (triggerAudioCallback) triggerAudioCallback('destroy');
+                }
             }
         }
         

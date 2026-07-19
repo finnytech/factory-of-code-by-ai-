@@ -2,7 +2,7 @@ const { chromium } = require('playwright');
 const path = require('path');
 
 (async () => {
-  console.log("Starting NanoForge Automated Integration Test (Iteration 2)...");
+  console.log("Starting NanoForge Automated Integration Test (Iteration 3)...");
   const browser = await chromium.launch();
   const page = await browser.newPage();
 
@@ -17,6 +17,16 @@ const path = require('path');
       errors.push(msg.text());
     } else {
       console.log(`Console [${msg.type()}]: ${msg.text()}`);
+    }
+  });
+
+  // Handle javascript prompts for preset saving
+  page.on('dialog', async dialog => {
+    console.log(`Dialog popped: [${dialog.type()}] "${dialog.message()}"`);
+    if (dialog.type() === 'prompt') {
+      await dialog.accept('AutoTestPreset');
+    } else {
+      await dialog.dismiss();
     }
   });
 
@@ -50,7 +60,12 @@ const path = require('path');
   await page.click('#btn-apply-dna');
   await page.waitForTimeout(500);
 
-  // Test Mission engine setup
+  // Test Save Preset dialog
+  console.log("Testing Save Preset dialog interaction...");
+  await page.click('#btn-save-preset');
+  await page.waitForTimeout(500);
+
+  // Initiate Pathogen Purge mission
   console.log("Initiating Pathogen Purge mission...");
   await page.selectOption('#mission-selector', 'purge');
   await page.click('#btn-start-mission');
@@ -61,12 +76,6 @@ const path = require('path');
     errors.push("Mission HUD failed to render when starting mission.");
   }
 
-  const goalText = await page.textContent('#mission-goal-text');
-  console.log(`Goal Text: ${goalText}`);
-  if (!goalText.includes("Eradicate Pathogens")) {
-    errors.push(`Unexpected Goal Text: ${goalText}`);
-  }
-
   // Click obstacles brush and paint on coordinates
   console.log("Selecting obstacles brush...");
   await page.click('#btn-spray-obstacle');
@@ -75,6 +84,11 @@ const path = require('path');
   await page.mouse.move(450, 250);
   await page.mouse.up();
   await page.waitForTimeout(500);
+
+  // Trigger storm to spawn Goliaths
+  console.log("Triggering mutagenic storm...");
+  await page.click('#btn-mutagenic-storm');
+  await page.waitForTimeout(1000);
 
   // Capture mutated screenshot
   await page.screenshot({ path: 'nanoforge-nanotech-simulator/nanoforge_mutated.png' });

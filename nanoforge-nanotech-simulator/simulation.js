@@ -148,16 +148,17 @@ class Food {
     }
 }
 
-// PATHOGEN CLASS (With Mutable DNA & reproduction)
+// PATHOGEN CLASS (With Standard vs Goliath specialization)
 class Pathogen {
-    constructor(x, y, dna = null) {
+    constructor(x, y, dna = null, type = 'standard') {
         this.x = x;
         this.y = y;
+        this.type = type;
         
         // Genes
         this.dna = dna ?? {
-            maxSpeed: 1.6,
-            radius: 6,
+            maxSpeed: type === 'goliath' ? 0.95 : 1.6,
+            radius: type === 'goliath' ? 14 : 6,
             mutationRate: 0.15
         };
         
@@ -166,14 +167,20 @@ class Pathogen {
         
         this.vx = (Math.random() - 0.5) * this.maxSpeed;
         this.vy = (Math.random() - 0.5) * this.maxSpeed;
-        this.energy = 100;
+        this.energy = type === 'goliath' ? 300 : 100;
         this.infectCooldown = 0;
     }
     
     update(grid, width, height, healthyCells, obstacles, triggerAudioCallback) {
-        // Emit toxin chemical repellent
-        grid.addVal(this.x, this.y, 'repellent', 0.35);
-        this.energy -= 0.14; // baseline metabolic rate
+        // Emit toxin chemical repellent (Goliaths emit much higher amounts)
+        if (this.type === 'goliath') {
+            grid.addVal(this.x, this.y, 'repellent', 0.85);
+            this.energy -= 0.22; // higher metabolic cost
+        } else {
+            grid.addVal(this.x, this.y, 'repellent', 0.35);
+            this.energy -= 0.14;
+        }
+        
         if (this.infectCooldown > 0) this.infectCooldown--;
         
         let target = null;
@@ -220,9 +227,9 @@ class Pathogen {
         if (this.infectCooldown === 0) {
             for (let cell of healthyCells) {
                 if (Math.hypot(cell.x - this.x, cell.y - this.y) < (this.radius + cell.radius)) {
-                    cell.energy -= 40;
-                    this.energy += 35;
-                    this.infectCooldown = 40;
+                    cell.energy -= this.type === 'goliath' ? 65 : 40;
+                    this.energy += this.type === 'goliath' ? 50 : 35;
+                    this.infectCooldown = this.type === 'goliath' ? 30 : 40;
                     if (triggerAudioCallback) triggerAudioCallback('infect');
                     break;
                 }
@@ -231,7 +238,8 @@ class Pathogen {
     }
     
     reproduce() {
-        if (this.energy > 200) {
+        const threshold = this.type === 'goliath' ? 480 : 200;
+        if (this.energy > threshold) {
             this.energy *= 0.48; // split energy
             
             const mutateVal = (val, rate) => {
@@ -240,9 +248,16 @@ class Pathogen {
             };
             
             const mr = this.dna.mutationRate;
+            // 6% chance of standard pathogen mutating into a Goliath
+            const childType = (this.type === 'goliath' || Math.random() < 0.06) ? 'goliath' : 'standard';
+            
             const childDna = {
-                maxSpeed: Math.max(0.8, Math.min(3.5, mutateVal(this.dna.maxSpeed, mr))),
-                radius: Math.max(3.5, Math.min(11, mutateVal(this.dna.radius, mr))),
+                maxSpeed: childType === 'goliath' 
+                    ? Math.max(0.6, Math.min(1.4, mutateVal(this.dna.maxSpeed, mr)))
+                    : Math.max(0.8, Math.min(3.5, mutateVal(this.dna.maxSpeed, mr))),
+                radius: childType === 'goliath'
+                    ? Math.max(12, Math.min(17, mutateVal(this.dna.radius, mr)))
+                    : Math.max(3.5, Math.min(11, mutateVal(this.dna.radius, mr))),
                 mutationRate: this.dna.mutationRate
             };
             
@@ -251,7 +266,7 @@ class Pathogen {
             const cx = this.x + Math.cos(angle) * offset;
             const cy = this.y + Math.sin(angle) * offset;
             
-            const child = new Pathogen(cx, cy, childDna);
+            const child = new Pathogen(cx, cy, childDna, childType);
             child.energy = this.energy;
             return child;
         }
@@ -262,7 +277,39 @@ class Pathogen {
         ctx.save();
         ctx.shadowBlur = 12;
         
-        // Speed-dependent coloring: Faster = Deep Magenta/Indigo, Slower = Vibrant Red
+        if (this.type === 'goliath') {
+            // Draw Goliath boss cell (Pulsing glowing violet/magenta structure)
+            ctx.shadowColor = '#7f00ff';
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.8;
+            ctx.fillStyle = 'rgba(127, 0, 255, 0.7)';
+            
+            // Outer spike ring
+            ctx.beginPath();
+            const spikes = 9;
+            for (let i = 0; i < spikes * 2; i++) {
+                const angle = (i * Math.PI) / spikes;
+                const dist = i % 2 === 0 ? this.radius : this.radius + 6;
+                const sx = this.x + Math.cos(angle) * dist;
+                const sy = this.y + Math.sin(angle) * dist;
+                if (i === 0) ctx.moveTo(sx, sy);
+                else ctx.lineTo(sx, sy);
+            }
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            
+            // Central radioactive core
+            ctx.shadowColor = '#ff007f';
+            ctx.fillStyle = '#ff007f';
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius * 0.45, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+            return;
+        }
+        
+        // Standard Pathogen Drawing
         const speedRatio = Math.max(0, Math.min(1, (this.maxSpeed - 0.8) / 2.7));
         const r = Math.floor(255 - speedRatio * 150);
         const g = 0;

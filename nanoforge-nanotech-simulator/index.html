@@ -90,7 +90,10 @@
   "maxSpeed": 2.5,
   "mutationRate": 0.15
 }</textarea>
-                        <button id="btn-apply-dna" class="btn btn-block btn-cyan-glow">COMPILE & APPLY DNA</button>
+                        <div class="editor-buttons-row">
+                            <button id="btn-apply-dna" class="btn btn-cyan-glow btn-half-width">COMPILE DNA</button>
+                            <button id="btn-save-preset" class="btn btn-outline-gold btn-half-width">SAVE PRESET</button>
+                        </div>
                     </div>
                     <div id="compiler-status" class="compiler-feedback">DNA Compiler ready.</div>
                 </div>
@@ -115,11 +118,12 @@
                 <div class="legend">
                     <span class="legend-item"><span class="legend-dot bg-cyan"></span>Nanobots</span>
                     <span class="legend-item"><span class="legend-dot bg-pink"></span>Pathogens</span>
+                    <span class="legend-item"><span class="legend-dot bg-goliath"></span>Goliaths</span>
                     <span class="legend-item"><span class="legend-dot bg-green"></span>Healthy Cells</span>
                     <span class="legend-item"><span class="legend-dot bg-blue"></span>Nutrients</span>
                     <span class="legend-item"><span class="legend-dot bg-gold"></span>Barriers</span>
-                    <span class="legend-item"><span class="legend-dot bg-cyan-glow"></span>Attractant Field</span>
-                    <span class="legend-item"><span class="legend-dot bg-pink-glow"></span>Repellent Field</span>
+                    <span class="legend-item"><span class="legend-dot bg-cyan-glow"></span>Attractant</span>
+                    <span class="legend-item"><span class="legend-dot bg-pink-glow"></span>Repellent</span>
                 </div>
             </section>
 
@@ -152,7 +156,7 @@
                     </div>
                 </div>
 
-                <!-- NEW: MISSION CONTROL HUD PANEL -->
+                <!-- MISSION CONTROL HUD PANEL -->
                 <div class="control-group" id="mission-panel">
                     <span class="group-label">MISSION PROTOCOLS</span>
                     <div class="mission-controls">

@@ -23,6 +23,7 @@ document.addEventListener("DOMContentLoaded", () => {
     
     const dnaEditor = document.getElementById("dna-editor");
     const btnApplyDna = document.getElementById("btn-apply-dna");
+    const btnSavePreset = document.getElementById("btn-save-preset");
     const presetSelector = document.getElementById("preset-selector");
     const compilerStatus = document.getElementById("compiler-status");
     
@@ -42,11 +43,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const mutationCanvas = document.getElementById("mutation-chart");
     const mutationCtx = mutationCanvas.getContext("2d");
 
-    // Mission HUD elements
-    const missionPanel = document.getElementById("mission-panel");
+    const missionHud = document.getElementById("mission-hud");
     const missionSelector = document.getElementById("mission-selector");
     const btnStartMission = document.getElementById("btn-start-mission");
-    const missionHud = document.getElementById("mission-hud");
     const missionGoalText = document.getElementById("mission-goal-text");
     const missionStatusText = document.getElementById("mission-status-text");
     const missionTimerText = document.getElementById("mission-timer-text");
@@ -57,7 +56,7 @@ document.addEventListener("DOMContentLoaded", () => {
     canvas.width = SIM_WIDTH;
     canvas.height = SIM_HEIGHT;
     
-    const presets = {
+    const defaultPresets = {
         balanced: {
             attractionToFood: 1.8,
             attractionToPathogens: 2.5,
@@ -100,7 +99,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     };
     
-    let activeDnaTemplate = { ...presets.balanced };
+    let activeDnaTemplate = { ...defaultPresets.balanced };
     
     let nanobots = [];
     let pathogens = [];
@@ -124,15 +123,22 @@ document.addEventListener("DOMContentLoaded", () => {
     const maxHistoryPoints = 100;
 
     // Mission engine state
-    let activeMission = 'freeplay'; // 'freeplay', 'purge', 'cultivate', 'survive'
-    let missionTimeLeft = 0; // in seconds
-    let missionStatus = 'READY'; // 'READY', 'ACTIVE', 'VICTORY', 'FAILED'
+    let activeMission = 'freeplay'; 
+    let missionTimeLeft = 0; 
+    let missionStatus = 'READY'; 
     
-    // 3. AUDIO SYSTEM (WEB AUDIO API)
+    // 3. AUDIO SYSTEM (WEB AUDIO API & AMBIENT DRONE SYNTH)
     let audioCtx = null;
     let mainGain = null;
-    let ambientOsc = null;
     let isAudioOn = false;
+
+    // Detuned pad chord oscillators
+    let padOsc1 = null;
+    let padOsc2 = null;
+    let padOsc3 = null;
+    let padFilter = null;
+    let padGain = null;
+    let currentChords = [261.63, 329.63, 392.00]; // C Major default
     
     function initAudio() {
         try {
@@ -141,30 +147,74 @@ document.addEventListener("DOMContentLoaded", () => {
             mainGain.gain.value = parseFloat(volumeControl.value);
             mainGain.connect(audioCtx.destination);
             
-            ambientOsc = audioCtx.createOscillator();
-            ambientOsc.type = 'sawtooth';
-            ambientOsc.frequency.setValueAtTime(55, audioCtx.currentTime); 
+            // DETUNED WARM AMBIENT PAD SYNTH
+            padOsc1 = audioCtx.createOscillator();
+            padOsc2 = audioCtx.createOscillator();
+            padOsc3 = audioCtx.createOscillator();
+            padFilter = audioCtx.createBiquadFilter();
+            padGain = audioCtx.createGain();
             
-            const filter = audioCtx.createBiquadFilter();
-            filter.type = 'lowpass';
-            filter.frequency.setValueAtTime(110, audioCtx.currentTime);
+            padOsc1.type = 'triangle';
+            padOsc2.type = 'sawtooth'; // detuned saw
+            padOsc3.type = 'triangle'; // sub base
             
-            const ambGain = audioCtx.createGain();
-            ambGain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+            // Initial frequencies (C4, E4, G3)
+            padOsc1.frequency.setValueAtTime(261.63, audioCtx.currentTime); // C4
+            padOsc2.frequency.setValueAtTime(329.63 * 1.004, audioCtx.currentTime); // detuned E4
+            padOsc3.frequency.setValueAtTime(196.00 * 0.5, audioCtx.currentTime); // sub G2
             
-            ambientOsc.connect(filter);
-            filter.connect(ambGain);
-            ambGain.connect(mainGain);
+            padFilter.type = 'lowpass';
+            padFilter.frequency.setValueAtTime(160, audioCtx.currentTime); // very warm low cutoff
+            padFilter.Q.setValueAtTime(1, audioCtx.currentTime);
             
-            ambientOsc.start();
+            padGain.gain.setValueAtTime(0.04, audioCtx.currentTime); // low ambient volume
+            
+            padOsc1.connect(padFilter);
+            padOsc2.connect(padFilter);
+            padOsc3.connect(padFilter);
+            padFilter.connect(padGain);
+            padGain.connect(mainGain);
+            
+            padOsc1.start();
+            padOsc2.start();
+            padOsc3.start();
+            
             isAudioOn = true;
             btnSoundToggle.textContent = "AUDIO OFF";
             btnSoundToggle.classList.add("btn-cyan-glow");
-            logEvent("Audio synthesizer online. Audio Bus connected.");
+            logEvent("Audio synthesizer online. Ambient detuned drone active.");
         } catch (e) {
             console.error("Audio failed to initialize", e);
             logEvent("ERROR: Audio initialization failed.");
         }
+    }
+
+    function updateAmbientDrone() {
+        if (!audioCtx || !isAudioOn || !padOsc1) return;
+
+        // Determine biosphere balance (healthy cells vs pathogens)
+        const total = healthyCells.length + pathogens.length;
+        const ratio = total > 0 ? (healthyCells.length / total) : 0.5;
+
+        let targetChords = [261.63, 329.63, 392.00]; // C Major (C4, E4, G4) - Healthy
+        let filterCutoff = 180;
+
+        if (ratio < 0.45) {
+            // Outbreak: Dissonant C Minor/Diminished (C4, Eb4, F#4)
+            targetChords = [261.63, 311.13, 369.99];
+            filterCutoff = 130; // darker tone
+        } else if (ratio < 0.65) {
+            // Standard: Suspended Chord (C4, F4, G4)
+            targetChords = [261.63, 349.23, 392.00];
+            filterCutoff = 160;
+        }
+
+        // Smoothly ramp pad frequencies over 1.5 seconds
+        padOsc1.frequency.exponentialRampToValueAtTime(targetChords[0], audioCtx.currentTime + 1.5);
+        padOsc2.frequency.exponentialRampToValueAtTime(targetChords[1] * 1.004, audioCtx.currentTime + 1.5);
+        padOsc3.frequency.exponentialRampToValueAtTime(targetChords[2] * 0.5, audioCtx.currentTime + 1.5);
+        
+        padFilter.frequency.exponentialRampToValueAtTime(filterCutoff, audioCtx.currentTime + 1.5);
     }
     
     function playSynthNote(freq, type, duration, slideFreq = 0) {
@@ -204,13 +254,11 @@ document.addEventListener("DOMContentLoaded", () => {
         } else if (event === 'heal') {
             playSynthNote(440, 'sine', 0.15, 880);
         } else if (event === 'victory') {
-            // Uplifting arpeggio chime
             playSynthNote(523, 'sine', 0.15);
             setTimeout(() => playSynthNote(659, 'sine', 0.15), 100);
             setTimeout(() => playSynthNote(784, 'sine', 0.15), 200);
             setTimeout(() => playSynthNote(1046, 'sine', 0.4), 300);
         } else if (event === 'defeat') {
-            // Jarring descending buzzer
             playSynthNote(200, 'sawtooth', 0.3, 100);
             setTimeout(() => playSynthNote(150, 'sawtooth', 0.5, 80), 200);
         }
@@ -243,7 +291,70 @@ document.addEventListener("DOMContentLoaded", () => {
         };
     }
 
-    // 6. INITIAL POPULATION SETUP
+    // 6. PRESET MANAGER & LOCALSTORAGE PERSISTENCE
+    function loadPresets() {
+        // Clear options except defaults
+        presetSelector.innerHTML = `
+            <option value="balanced">Preset: Balanced</option>
+            <option value="hunter">Preset: Hunter</option>
+            <option value="gatherer">Preset: Gatherer</option>
+            <option value="pacifist">Preset: Pacifist</option>
+        `;
+
+        try {
+            const stored = JSON.parse(localStorage.getItem("nanoforge_presets") || "{}");
+            for (let name in stored) {
+                const opt = document.createElement("option");
+                opt.value = name;
+                opt.textContent = `Custom: ${name}`;
+                presetSelector.appendChild(opt);
+            }
+        } catch(e) {
+            console.error("Failed to load custom presets", e);
+        }
+    }
+
+    btnSavePreset.addEventListener("click", () => {
+        const name = prompt("Enter a name for your custom DNA template:");
+        if (!name) return;
+        const cleanName = name.trim();
+        if (cleanName === "") return;
+        
+        try {
+            const currentDna = JSON.parse(dnaEditor.value);
+            const stored = JSON.parse(localStorage.getItem("nanoforge_presets") || "{}");
+            stored[cleanName] = currentDna;
+            localStorage.setItem("nanoforge_presets", JSON.stringify(stored));
+            
+            loadPresets();
+            presetSelector.value = cleanName;
+            logEvent(`Custom Preset "${cleanName}" saved successfully.`);
+            if (isAudioOn) playSynthNote(660, 'sine', 0.2);
+        } catch(e) {
+            compilerStatus.textContent = "Error: Invalid JSON format. Cannot save.";
+            compilerStatus.className = "compiler-feedback compiler-error";
+            logEvent("ERROR: Preset save aborted due to DNA parse error.");
+        }
+    });
+
+    presetSelector.addEventListener("change", (e) => {
+        const val = e.target.value;
+        if (defaultPresets[val]) {
+            dnaEditor.value = JSON.stringify(defaultPresets[val], null, 2);
+            btnApplyDna.click();
+        } else {
+            // Check localStorage
+            try {
+                const stored = JSON.parse(localStorage.getItem("nanoforge_presets") || "{}");
+                if (stored[val]) {
+                    dnaEditor.value = JSON.stringify(stored[val], null, 2);
+                    btnApplyDna.click();
+                }
+            } catch(err) {}
+        }
+    });
+
+    // 7. INITIAL POPULATION SETUP
     function populateChamber() {
         obstacles = [
             { x: SIM_WIDTH * 0.25, y: SIM_HEIGHT * 0.5, r: 35 },
@@ -263,7 +374,9 @@ document.addEventListener("DOMContentLoaded", () => {
         
         for (let i = 0; i < 8; i++) {
             const pos = getRandomPos();
-            pathogens.push(new Pathogen(pos.x, pos.y));
+            // Spawn 1 goliath as boss initially
+            const type = (i === 0) ? 'goliath' : 'standard';
+            pathogens.push(new Pathogen(pos.x, pos.y, null, type));
         }
         
         for (let i = 0; i < 40; i++) {
@@ -274,7 +387,7 @@ document.addEventListener("DOMContentLoaded", () => {
         logEvent(`Simulation populated: ${nanobots.length} Nanobots, ${pathogens.length} Pathogens.`);
     }
 
-    // 7. INPUT HANDLERS & BRUSH CONTROLS
+    // SPAWNING ACTIONS
     btnSpawnNanobot.addEventListener("click", () => {
         const pos = getRandomPos();
         nanobots.push(new Nanobot(pos.x, pos.y, activeDnaTemplate, globalMaxGeneration));
@@ -284,8 +397,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     btnSpawnPathogen.addEventListener("click", () => {
         const pos = getRandomPos();
-        pathogens.push(new Pathogen(pos.x, pos.y));
-        logEvent("WARNING: Exogenous pathogen injected into chamber.");
+        // 15% chance to spawn a Goliath manually
+        const type = Math.random() < 0.15 ? 'goliath' : 'standard';
+        pathogens.push(new Pathogen(pos.x, pos.y, null, type));
+        logEvent(`WARNING: Exogenous pathogen (${type}) injected into chamber.`);
         if (isAudioOn) playSynthNote(150, 'sawtooth', 0.4, 60);
     });
 
@@ -342,6 +457,12 @@ document.addEventListener("DOMContentLoaded", () => {
             path.radius = Math.max(3.5, Math.min(11, path.radius * (1 + (Math.random() - 0.5) * 0.3)));
         });
         
+        // Spawn Goliath pathogens
+        for (let i = 0; i < 2; i++) {
+            const p = getRandomPos();
+            pathogens.push(new Pathogen(p.x, p.y, null, 'goliath'));
+        }
+        
         for (let i = 0; i < 30; i++) {
             grid.addVal(Math.random() * SIM_WIDTH, Math.random() * SIM_HEIGHT, 'repellent', 4.0);
             grid.addVal(Math.random() * SIM_WIDTH, Math.random() * SIM_HEIGHT, 'attractant', 4.0);
@@ -358,15 +479,6 @@ document.addEventListener("DOMContentLoaded", () => {
         globalMaxGeneration = 0;
         logEvent("CHAMBER PURGED. All biological matter & barriers destroyed.");
         if (isAudioOn) playSynthNote(100, 'sine', 0.5, 30);
-    });
-
-    // Preset Selection Change
-    presetSelector.addEventListener("change", (e) => {
-        const selectedPreset = presets[e.target.value];
-        if (selectedPreset) {
-            dnaEditor.value = JSON.stringify(selectedPreset, null, 2);
-            btnApplyDna.click();
-        }
     });
 
     // DNA Compiler Action
@@ -473,7 +585,6 @@ document.addEventListener("DOMContentLoaded", () => {
     function initiateMission(type) {
         activeMission = type;
         
-        // Purge existing elements
         nanobots = [];
         pathogens = [];
         healthyCells = [];
@@ -482,7 +593,6 @@ document.addEventListener("DOMContentLoaded", () => {
         grid.clear();
         globalMaxGeneration = 0;
         
-        // Reset speeds
         simSpeed = 1;
         speedSlider.value = 1;
         speedLabel.textContent = "1x";
@@ -505,23 +615,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (type === 'purge') {
             missionGoalText.textContent = "Eradicate Pathogens";
-            missionTimeLeft = 60; // 60s
+            missionTimeLeft = 60; 
             missionTimerText.textContent = "60.0s";
             
-            // Layout setups: Spawn obstacles and pathogen outbreak
             obstacles.push(
                 { x: SIM_WIDTH * 0.35, y: SIM_HEIGHT * 0.5, r: 40 },
                 { x: SIM_WIDTH * 0.65, y: SIM_HEIGHT * 0.5, r: 40 }
             );
 
-            // Starting units
             for (let i = 0; i < 5; i++) {
                 const p = getRandomPos();
                 nanobots.push(new Nanobot(p.x, p.y, activeDnaTemplate));
             }
-            for (let i = 0; i < 16; i++) {
+            for (let i = 0; i < 15; i++) {
                 const p = getRandomPos();
-                pathogens.push(new Pathogen(p.x, p.y));
+                const pathType = (i === 0) ? 'goliath' : 'standard'; // 1 boss
+                pathogens.push(new Pathogen(p.x, p.y, null, pathType));
             }
             for (let i = 0; i < 30; i++) {
                 const p = getRandomPos();
@@ -535,7 +644,7 @@ document.addEventListener("DOMContentLoaded", () => {
             logEvent("PROTOCOL: PATHOGEN PURGE - Adjust DNA code to hunt them down before timer runs out!");
         } else if (type === 'cultivate') {
             missionGoalText.textContent = "Cultivate 60+ Healthy Cells";
-            missionTimeLeft = 75; // 75s
+            missionTimeLeft = 75; 
             missionTimerText.textContent = "75.0s";
             
             obstacles.push(
@@ -554,7 +663,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 const p = getRandomPos();
                 healthyCells.push(new HealthyCell(p.x, p.y));
             }
-            // Abundant starting nutrients to feed mitosis
             for (let i = 0; i < 50; i++) {
                 const p = getRandomPos();
                 foodArray.push(new Food(p.x, p.y));
@@ -563,10 +671,9 @@ document.addEventListener("DOMContentLoaded", () => {
             logEvent("PROTOCOL: CELLULAR CULTIVATION - Supply nutrients & steer healers to replicate biomass.");
         } else if (type === 'survive') {
             missionGoalText.textContent = "Keep Nanobots Alive";
-            missionTimeLeft = 45; // 45s
+            missionTimeLeft = 45; 
             missionTimerText.textContent = "45.0s";
 
-            // Spawn a toxic border
             obstacles.push(
                 { x: SIM_WIDTH * 0.2, y: SIM_HEIGHT * 0.25, r: 25 },
                 { x: SIM_WIDTH * 0.8, y: SIM_HEIGHT * 0.25, r: 25 },
@@ -580,7 +687,8 @@ document.addEventListener("DOMContentLoaded", () => {
             }
             for (let i = 0; i < 12; i++) {
                 const p = getRandomPos();
-                pathogens.push(new Pathogen(p.x, p.y));
+                const pathType = (i < 2) ? 'goliath' : 'standard'; // 2 bosses
+                pathogens.push(new Pathogen(p.x, p.y, null, pathType));
             }
             for (let i = 0; i < 20; i++) {
                 const p = getRandomPos();
@@ -604,7 +712,6 @@ document.addEventListener("DOMContentLoaded", () => {
     function checkMissionEnd() {
         if (missionStatus !== 'ACTIVE') return;
 
-        // Condition Checkers
         if (activeMission === 'purge') {
             if (pathogens.length === 0) {
                 triggerMissionEnd(true, "All pathogens successfully eradicated!");
@@ -641,7 +748,6 @@ document.addEventListener("DOMContentLoaded", () => {
             triggerAudioSynth('defeat');
         }
         
-        // Halted simulation state on mission complete
         isRunning = false;
         stateVal.textContent = "HALTED";
         stateVal.className = "stat-value text-pink";
@@ -718,7 +824,6 @@ document.addEventListener("DOMContentLoaded", () => {
             mutationCtx.stroke();
         }
         
-        // Co-evolution distributions side-by-side
         if (nanobots.length > 0 || pathogens.length > 0) {
             const botBins = new Array(10).fill(0);
             for (let bot of nanobots) {
@@ -774,11 +879,16 @@ document.addEventListener("DOMContentLoaded", () => {
             for (let s = 0; s < simSpeed; s++) {
                 simTicks++;
 
-                // A. Mission Timer countdown updates
+                // A. Mission Timer updates
                 if (activeMission !== 'freeplay' && simTicks % 60 === 0) {
                     missionTimeLeft = Math.max(0, missionTimeLeft - 1);
                     missionTimerText.textContent = `${missionTimeLeft.toFixed(0)}.0s`;
                     checkMissionEnd();
+                }
+
+                // Update ambient pad frequencies every 60 ticks
+                if (simTicks % 60 === 0) {
+                    updateAmbientDrone();
                 }
                 
                 grid.update();
@@ -830,6 +940,9 @@ document.addEventListener("DOMContentLoaded", () => {
                     const child = path.reproduce();
                     if (child) {
                         newPathogens.push(child);
+                        if (child.type === 'goliath') {
+                            logEvent("ECOLOGICAL ANOMALY: Pathogen mutated into Goliath boss cell!");
+                        }
                     }
                 }
                 if (newPathogens.length > 0) {
@@ -937,6 +1050,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     
     // START SIMULATION
+    loadPresets();
     populateChamber();
     requestAnimationFrame(loop);
 });

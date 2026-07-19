@@ -1,0 +1,11 @@
+{
+  "name": "chronosphere-task-citadel",
+  "version": "1.0.0",
+  "description": "A productivity app and city-builder game",
+  "main": "app.js",
+  "scripts": {
+    "test": "node test_logic.js"
+  },
+  "author": "AI",
+  "license": "Apache-2.0"
+}

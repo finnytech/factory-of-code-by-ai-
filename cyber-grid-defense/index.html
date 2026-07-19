@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyber Grid Defense</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="game-container">
+        <header>
+            <h1>CYBER GRID DEFENSE</h1>
+            <div id="stats">
+                <span id="score">Score: 0</span>
+                <span id="lives">Lives: 3</span>
+                <span id="wave">Wave: 1</span>
+            </div>
+        </header>
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div id="game-over" class="hidden">
+            <h2>GAME OVER</h2>
+            <p>Final Score: <span id="final-score"></span></p>
+            <button id="restart-btn">Restart System</button>
+        </div>
+    </div>
+    <script src="game.js"></script>
+</body>
+</html>

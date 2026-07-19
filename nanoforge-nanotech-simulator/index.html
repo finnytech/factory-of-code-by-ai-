@@ -146,9 +146,37 @@
                 </div>
 
                 <div class="control-group flex-grow">
-                    <span class="group-label">GENETIC MUTATION DISTRIBUTIONS</span>
+                    <span class="group-label">CO-EVOLUTIONARY SPEED MUTATIONS</span>
                     <div class="chart-container">
                         <canvas id="mutation-chart"></canvas>
+                    </div>
+                </div>
+
+                <!-- NEW: MISSION CONTROL HUD PANEL -->
+                <div class="control-group" id="mission-panel">
+                    <span class="group-label">MISSION PROTOCOLS</span>
+                    <div class="mission-controls">
+                        <select id="mission-selector" class="mission-select">
+                            <option value="freeplay">Mode: Free Sandbox</option>
+                            <option value="purge">Mission: Pathogen Purge</option>
+                            <option value="cultivate">Mission: Cell Cultivation</option>
+                            <option value="survive">Mission: Survival Sweep</option>
+                        </select>
+                        <button id="btn-start-mission" class="btn btn-cyan">INITIATE</button>
+                    </div>
+                    <div class="mission-hud-display hidden" id="mission-hud">
+                        <div class="mission-row">
+                            <span class="hud-label">GOAL:</span>
+                            <span id="mission-goal-text" class="hud-value">Eradicate Pathogens</span>
+                        </div>
+                        <div class="mission-row">
+                            <span class="hud-label">STATUS:</span>
+                            <span id="mission-status-text" class="hud-value text-cyan">READY</span>
+                        </div>
+                        <div class="mission-row">
+                            <span class="hud-label">TIMER:</span>
+                            <span id="mission-timer-text" class="hud-value text-gold">--</span>
+                        </div>
                     </div>
                 </div>
 

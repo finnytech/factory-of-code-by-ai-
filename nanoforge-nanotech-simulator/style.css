@@ -142,10 +142,10 @@ main {
     background: var(--bg-panel);
     border: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: 6px;
-    padding: 15px;
+    padding: 12px 15px;
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 12px;
     backdrop-filter: blur(10px);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
     min-height: 0;
@@ -523,7 +523,7 @@ main {
 
 /* PROCEDURAL CHARTS */
 .chart-container {
-    height: 100px;
+    height: 90px;
     background: rgba(0, 0, 0, 0.3);
     border: 1px solid rgba(255, 255, 255, 0.03);
     border-radius: 4px;
@@ -534,6 +534,65 @@ main {
     width: 100%;
     height: 100%;
     display: block;
+}
+
+/* MISSION SYSTEM DISPLAY PANEL */
+.mission-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.mission-select {
+    font-family: var(--font-heading);
+    font-size: 0.65rem;
+    font-weight: bold;
+    background: #0d1426;
+    color: var(--neon-gold);
+    border: 1px solid rgba(255, 170, 0, 0.3);
+    border-radius: 4px;
+    padding: 6px;
+    outline: none;
+    cursor: pointer;
+    flex-grow: 1;
+    transition: all 0.2s ease;
+}
+
+.mission-select:hover, .mission-select:focus {
+    border-color: var(--neon-gold);
+    box-shadow: 0 0 5px rgba(255, 170, 0, 0.2);
+}
+
+.mission-hud-display {
+    background: rgba(0, 0, 0, 0.38);
+    border: 1px dashed rgba(255, 170, 0, 0.25);
+    border-radius: 4px;
+    padding: 6px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    transition: all 0.3s ease;
+}
+
+.mission-hud-display.hidden {
+    display: none !important;
+}
+
+.mission-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.hud-label {
+    color: var(--text-muted);
+    font-size: 0.62rem;
+}
+
+.hud-value {
+    font-weight: bold;
 }
 
 /* TELEMETRY EVENT LOG */
@@ -547,7 +606,7 @@ main {
 
 .log-console {
     flex-grow: 1;
-    min-height: 80px;
+    min-height: 70px;
     background: #010307;
     border: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: 4px;

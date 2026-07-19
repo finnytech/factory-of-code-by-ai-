@@ -2,7 +2,7 @@ const { chromium } = require('playwright');
 const path = require('path');
 
 (async () => {
-  console.log("Starting NanoForge Automated Integration Test (Iteration 1)...");
+  console.log("Starting NanoForge Automated Integration Test (Iteration 2)...");
   const browser = await chromium.launch();
   const page = await browser.newPage();
 
@@ -50,14 +50,22 @@ const path = require('path');
   await page.click('#btn-apply-dna');
   await page.waitForTimeout(500);
 
-  // Test button clicks
-  console.log("Clicking SPAWN NANOBOT button...");
-  await page.click('#btn-spawn-nanobot');
-  await page.waitForTimeout(500);
-
-  console.log("Clicking MUTAGENIC PULSE button...");
-  await page.click('#btn-mutagenic-storm');
+  // Test Mission engine setup
+  console.log("Initiating Pathogen Purge mission...");
+  await page.selectOption('#mission-selector', 'purge');
+  await page.click('#btn-start-mission');
   await page.waitForTimeout(1000);
+
+  const isHudVisible = await page.isVisible('#mission-hud');
+  if (!isHudVisible) {
+    errors.push("Mission HUD failed to render when starting mission.");
+  }
+
+  const goalText = await page.textContent('#mission-goal-text');
+  console.log(`Goal Text: ${goalText}`);
+  if (!goalText.includes("Eradicate Pathogens")) {
+    errors.push(`Unexpected Goal Text: ${goalText}`);
+  }
 
   // Click obstacles brush and paint on coordinates
   console.log("Selecting obstacles brush...");

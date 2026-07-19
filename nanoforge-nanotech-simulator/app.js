@@ -42,13 +42,21 @@ document.addEventListener("DOMContentLoaded", () => {
     const mutationCanvas = document.getElementById("mutation-chart");
     const mutationCtx = mutationCanvas.getContext("2d");
 
+    // Mission HUD elements
+    const missionPanel = document.getElementById("mission-panel");
+    const missionSelector = document.getElementById("mission-selector");
+    const btnStartMission = document.getElementById("btn-start-mission");
+    const missionHud = document.getElementById("mission-hud");
+    const missionGoalText = document.getElementById("mission-goal-text");
+    const missionStatusText = document.getElementById("mission-status-text");
+    const missionTimerText = document.getElementById("mission-timer-text");
+
     // 2. SIMULATION CONSTANTS AND STATE
     const SIM_WIDTH = 800;
     const SIM_HEIGHT = 500;
     canvas.width = SIM_WIDTH;
     canvas.height = SIM_HEIGHT;
     
-    // DNA Presets Registry
     const presets = {
         balanced: {
             attractionToFood: 1.8,
@@ -98,7 +106,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let pathogens = [];
     let healthyCells = [];
     let foodArray = [];
-    let obstacles = []; // Static circular barriers
+    let obstacles = []; 
     
     let grid = new ChemicalGrid(SIM_WIDTH, SIM_HEIGHT, 40, 25);
     
@@ -108,12 +116,17 @@ document.addEventListener("DOMContentLoaded", () => {
     
     // Mouse Interaction
     let isDrawing = false;
-    let brushType = 'attractant'; // 'attractant', 'repellent', 'obstacle'
+    let brushType = 'attractant'; 
     
     // Telemetry logs and charts history
     let simTicks = 0;
     const populationHistory = [];
     const maxHistoryPoints = 100;
+
+    // Mission engine state
+    let activeMission = 'freeplay'; // 'freeplay', 'purge', 'cultivate', 'survive'
+    let missionTimeLeft = 0; // in seconds
+    let missionStatus = 'READY'; // 'READY', 'ACTIVE', 'VICTORY', 'FAILED'
     
     // 3. AUDIO SYSTEM (WEB AUDIO API)
     let audioCtx = null;
@@ -190,6 +203,16 @@ document.addEventListener("DOMContentLoaded", () => {
             playSynthNote(587, 'sawtooth', 0.2, 100);
         } else if (event === 'heal') {
             playSynthNote(440, 'sine', 0.15, 880);
+        } else if (event === 'victory') {
+            // Uplifting arpeggio chime
+            playSynthNote(523, 'sine', 0.15);
+            setTimeout(() => playSynthNote(659, 'sine', 0.15), 100);
+            setTimeout(() => playSynthNote(784, 'sine', 0.15), 200);
+            setTimeout(() => playSynthNote(1046, 'sine', 0.4), 300);
+        } else if (event === 'defeat') {
+            // Jarring descending buzzer
+            playSynthNote(200, 'sawtooth', 0.3, 100);
+            setTimeout(() => playSynthNote(150, 'sawtooth', 0.5, 80), 200);
         }
     }
     
@@ -201,14 +224,13 @@ document.addEventListener("DOMContentLoaded", () => {
         logOutput.textContent = newLog + '\n' + logOutput.textContent.split('\n').slice(0, 15).join('\n');
     }
 
-    // 5. HELPER: RANDOM POSITION GENERATOR (avoiding obstacles)
+    // 5. HELPER: RANDOM POSITION GENERATOR
     function getRandomPos() {
         let attempts = 0;
         while (attempts < 100) {
             const x = Math.random() * (SIM_WIDTH - 40) + 20;
             const y = Math.random() * (SIM_HEIGHT - 40) + 20;
             
-            // Check if position overlaps any obstacle
             const overlap = obstacles.some(obs => Math.hypot(obs.x - x, obs.y - y) < obs.r + 15);
             if (!overlap) {
                 return { x, y };
@@ -223,32 +245,27 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // 6. INITIAL POPULATION SETUP
     function populateChamber() {
-        // Preset obstacles (3 static central barriers)
-        obstacles.push(
+        obstacles = [
             { x: SIM_WIDTH * 0.25, y: SIM_HEIGHT * 0.5, r: 35 },
             { x: SIM_WIDTH * 0.5, y: SIM_HEIGHT * 0.35, r: 40 },
             { x: SIM_WIDTH * 0.75, y: SIM_HEIGHT * 0.6, r: 30 }
-        );
+        ];
 
-        // Spawn initial healthy cells
         for (let i = 0; i < 35; i++) {
             const pos = getRandomPos();
             healthyCells.push(new HealthyCell(pos.x, pos.y));
         }
         
-        // Spawn starting nanobots
         for (let i = 0; i < 18; i++) {
             const pos = getRandomPos();
             nanobots.push(new Nanobot(pos.x, pos.y, activeDnaTemplate));
         }
         
-        // Spawn starting pathogens
         for (let i = 0; i < 8; i++) {
             const pos = getRandomPos();
             pathogens.push(new Pathogen(pos.x, pos.y));
         }
         
-        // Spawn nutrient food
         for (let i = 0; i < 40; i++) {
             const pos = getRandomPos();
             foodArray.push(new Food(pos.x, pos.y));
@@ -319,6 +336,11 @@ document.addEventListener("DOMContentLoaded", () => {
             bot.dna.attractionToPathogens *= (1 + (Math.random() - 0.5) * 0.5);
             bot.dna.maxSpeed = Math.max(1.0, Math.min(5.0, bot.dna.maxSpeed * (1 + (Math.random() - 0.5) * 0.4)));
         });
+
+        pathogens.forEach(path => {
+            path.maxSpeed = Math.max(0.8, Math.min(3.5, path.maxSpeed * (1 + (Math.random() - 0.5) * 0.4)));
+            path.radius = Math.max(3.5, Math.min(11, path.radius * (1 + (Math.random() - 0.5) * 0.3)));
+        });
         
         for (let i = 0; i < 30; i++) {
             grid.addVal(Math.random() * SIM_WIDTH, Math.random() * SIM_HEIGHT, 'repellent', 4.0);
@@ -343,7 +365,6 @@ document.addEventListener("DOMContentLoaded", () => {
         const selectedPreset = presets[e.target.value];
         if (selectedPreset) {
             dnaEditor.value = JSON.stringify(selectedPreset, null, 2);
-            // Compile and Apply DNA automatically
             btnApplyDna.click();
         }
     });
@@ -434,11 +455,9 @@ document.addEventListener("DOMContentLoaded", () => {
         const mouseY = ((e.clientY - rect.top) / rect.height) * SIM_HEIGHT;
         
         if (brushType === 'obstacle') {
-            // Paint static circular wall
             const overlap = obstacles.some(obs => Math.hypot(obs.x - mouseX, obs.y - mouseY) < 14);
             if (!overlap) {
                 obstacles.push({ x: mouseX, y: mouseY, r: 16 });
-                // Limit maximum painted obstacles to prevent rendering lag
                 if (obstacles.length > 80) obstacles.shift();
             }
         } else {
@@ -446,7 +465,189 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // 8. CUSTOM CHART RENDERING SYSTEM (vanilla canvas)
+    // 8. MISSION ENGINE
+    btnStartMission.addEventListener("click", () => {
+        initiateMission(missionSelector.value);
+    });
+
+    function initiateMission(type) {
+        activeMission = type;
+        
+        // Purge existing elements
+        nanobots = [];
+        pathogens = [];
+        healthyCells = [];
+        foodArray = [];
+        obstacles = [];
+        grid.clear();
+        globalMaxGeneration = 0;
+        
+        // Reset speeds
+        simSpeed = 1;
+        speedSlider.value = 1;
+        speedLabel.textContent = "1x";
+        isRunning = true;
+        stateVal.textContent = "RUNNING";
+        stateVal.className = "stat-value text-green";
+
+        if (type === 'freeplay') {
+            missionHud.classList.add("hidden");
+            missionStatus = 'READY';
+            populateChamber();
+            logEvent("Free Play sandbox initiated.");
+            return;
+        }
+
+        missionHud.classList.remove("hidden");
+        missionStatus = 'ACTIVE';
+        missionStatusText.textContent = "ACTIVE";
+        missionStatusText.className = "hud-value text-cyan";
+
+        if (type === 'purge') {
+            missionGoalText.textContent = "Eradicate Pathogens";
+            missionTimeLeft = 60; // 60s
+            missionTimerText.textContent = "60.0s";
+            
+            // Layout setups: Spawn obstacles and pathogen outbreak
+            obstacles.push(
+                { x: SIM_WIDTH * 0.35, y: SIM_HEIGHT * 0.5, r: 40 },
+                { x: SIM_WIDTH * 0.65, y: SIM_HEIGHT * 0.5, r: 40 }
+            );
+
+            // Starting units
+            for (let i = 0; i < 5; i++) {
+                const p = getRandomPos();
+                nanobots.push(new Nanobot(p.x, p.y, activeDnaTemplate));
+            }
+            for (let i = 0; i < 16; i++) {
+                const p = getRandomPos();
+                pathogens.push(new Pathogen(p.x, p.y));
+            }
+            for (let i = 0; i < 30; i++) {
+                const p = getRandomPos();
+                healthyCells.push(new HealthyCell(p.x, p.y));
+            }
+            for (let i = 0; i < 20; i++) {
+                const p = getRandomPos();
+                foodArray.push(new Food(p.x, p.y));
+            }
+
+            logEvent("PROTOCOL: PATHOGEN PURGE - Adjust DNA code to hunt them down before timer runs out!");
+        } else if (type === 'cultivate') {
+            missionGoalText.textContent = "Cultivate 60+ Healthy Cells";
+            missionTimeLeft = 75; // 75s
+            missionTimerText.textContent = "75.0s";
+            
+            obstacles.push(
+                { x: SIM_WIDTH * 0.5, y: SIM_HEIGHT * 0.5, r: 55 }
+            );
+
+            for (let i = 0; i < 8; i++) {
+                const p = getRandomPos();
+                nanobots.push(new Nanobot(p.x, p.y, activeDnaTemplate));
+            }
+            for (let i = 0; i < 3; i++) {
+                const p = getRandomPos();
+                pathogens.push(new Pathogen(p.x, p.y));
+            }
+            for (let i = 0; i < 15; i++) {
+                const p = getRandomPos();
+                healthyCells.push(new HealthyCell(p.x, p.y));
+            }
+            // Abundant starting nutrients to feed mitosis
+            for (let i = 0; i < 50; i++) {
+                const p = getRandomPos();
+                foodArray.push(new Food(p.x, p.y));
+            }
+
+            logEvent("PROTOCOL: CELLULAR CULTIVATION - Supply nutrients & steer healers to replicate biomass.");
+        } else if (type === 'survive') {
+            missionGoalText.textContent = "Keep Nanobots Alive";
+            missionTimeLeft = 45; // 45s
+            missionTimerText.textContent = "45.0s";
+
+            // Spawn a toxic border
+            obstacles.push(
+                { x: SIM_WIDTH * 0.2, y: SIM_HEIGHT * 0.25, r: 25 },
+                { x: SIM_WIDTH * 0.8, y: SIM_HEIGHT * 0.25, r: 25 },
+                { x: SIM_WIDTH * 0.2, y: SIM_HEIGHT * 0.75, r: 25 },
+                { x: SIM_WIDTH * 0.8, y: SIM_HEIGHT * 0.75, r: 25 }
+            );
+
+            for (let i = 0; i < 15; i++) {
+                const p = getRandomPos();
+                nanobots.push(new Nanobot(p.x, p.y, activeDnaTemplate));
+            }
+            for (let i = 0; i < 12; i++) {
+                const p = getRandomPos();
+                pathogens.push(new Pathogen(p.x, p.y));
+            }
+            for (let i = 0; i < 20; i++) {
+                const p = getRandomPos();
+                healthyCells.push(new HealthyCell(p.x, p.y));
+            }
+            for (let i = 0; i < 25; i++) {
+                const p = getRandomPos();
+                foodArray.push(new Food(p.x, p.y));
+            }
+
+            logEvent("PROTOCOL: SURVIVAL SWEEP - Navigate barriers and maintain energy counts.");
+        }
+
+        if (audioCtx && isAudioOn) {
+            playSynthNote(440, 'sine', 0.25);
+            setTimeout(() => playSynthNote(554, 'sine', 0.25), 150);
+            setTimeout(() => playSynthNote(659, 'sine', 0.4), 300);
+        }
+    }
+
+    function checkMissionEnd() {
+        if (missionStatus !== 'ACTIVE') return;
+
+        // Condition Checkers
+        if (activeMission === 'purge') {
+            if (pathogens.length === 0) {
+                triggerMissionEnd(true, "All pathogens successfully eradicated!");
+            } else if (nanobots.length === 0 || missionTimeLeft <= 0) {
+                triggerMissionEnd(false, "Outbreak uncontrolled or nanobots collapsed.");
+            }
+        } else if (activeMission === 'cultivate') {
+            if (healthyCells.length >= 60) {
+                triggerMissionEnd(true, "Biomass cultivation goals surpassed!");
+            } else if (healthyCells.length === 0 || missionTimeLeft <= 0) {
+                triggerMissionEnd(false, "Cell cultures collapsed.");
+            }
+        } else if (activeMission === 'survive') {
+            if (nanobots.length === 0) {
+                triggerMissionEnd(false, "Nanobot population collapsed.");
+            } else if (missionTimeLeft <= 0) {
+                triggerMissionEnd(true, "Survival sweep completed successfully!");
+            }
+        }
+    }
+
+    function triggerMissionEnd(isVictory, logMsg) {
+        if (isVictory) {
+            missionStatus = 'VICTORY';
+            missionStatusText.textContent = "VICTORY";
+            missionStatusText.className = "hud-value text-green";
+            logEvent("MISSION SUCCESS: " + logMsg);
+            triggerAudioSynth('victory');
+        } else {
+            missionStatus = 'FAILED';
+            missionStatusText.textContent = "FAILED";
+            missionStatusText.className = "hud-value text-pink";
+            logEvent("MISSION FAILURE: " + logMsg);
+            triggerAudioSynth('defeat');
+        }
+        
+        // Halted simulation state on mission complete
+        isRunning = false;
+        stateVal.textContent = "HALTED";
+        stateVal.className = "stat-value text-pink";
+    }
+
+    // 9. CO-EVOLUTION CHART RENDERING (Nanobots vs Pathogens side-by-side)
     function updateCharts() {
         if (simTicks % 60 === 0) {
             populationHistory.push({
@@ -517,42 +718,68 @@ document.addEventListener("DOMContentLoaded", () => {
             mutationCtx.stroke();
         }
         
-        if (nanobots.length > 0) {
-            const bins = new Array(10).fill(0);
+        // Co-evolution distributions side-by-side
+        if (nanobots.length > 0 || pathogens.length > 0) {
+            const botBins = new Array(10).fill(0);
             for (let bot of nanobots) {
-                const binIdx = Math.min(bins.length - 1, Math.floor((bot.dna.maxSpeed / 5.5) * bins.length));
-                bins[binIdx]++;
+                const binIdx = Math.min(botBins.length - 1, Math.floor((bot.dna.maxSpeed / 5.5) * botBins.length));
+                botBins[binIdx]++;
+            }
+
+            const pathBins = new Array(10).fill(0);
+            for (let path of pathogens) {
+                const binIdx = Math.min(pathBins.length - 1, Math.floor((path.maxSpeed / 5.5) * pathBins.length));
+                pathBins[binIdx]++;
             }
             
-            const maxBinVal = Math.max(1, ...bins);
-            const binWidth = mw / bins.length;
+            const maxBinVal = Math.max(1, ...botBins, ...pathBins);
+            const binWidth = mw / botBins.length;
+            const subBarWidth = binWidth / 2 - 2;
             
-            mutationCtx.fillStyle = 'rgba(0, 240, 255, 0.45)';
-            mutationCtx.strokeStyle = '#00f0ff';
-            mutationCtx.lineWidth = 1;
-            
-            for (let i = 0; i < bins.length; i++) {
-                const barH = (bins[i] / maxBinVal) * (mh - 15);
-                const bx = i * binWidth + 2;
-                const by = mh - barH - 2;
+            for (let i = 0; i < botBins.length; i++) {
+                // Nanobots (cyan, left sub-bar)
+                const botH = (botBins[i] / maxBinVal) * (mh - 15);
+                const botX = i * binWidth + 1;
+                const botY = mh - botH - 2;
                 
+                mutationCtx.fillStyle = 'rgba(0, 240, 255, 0.4)';
+                mutationCtx.strokeStyle = '#00f0ff';
                 mutationCtx.beginPath();
-                mutationCtx.rect(bx, by, binWidth - 4, barH);
+                mutationCtx.rect(botX, botY, subBarWidth, botH);
+                mutationCtx.fill();
+                mutationCtx.stroke();
+
+                // Pathogens (pink, right sub-bar)
+                const pathH = (pathBins[i] / maxBinVal) * (mh - 15);
+                const pathX = i * binWidth + 1 + subBarWidth + 1;
+                const pathY = mh - pathH - 2;
+                
+                mutationCtx.fillStyle = 'rgba(255, 0, 127, 0.4)';
+                mutationCtx.strokeStyle = '#ff007f';
+                mutationCtx.beginPath();
+                mutationCtx.rect(pathX, pathY, subBarWidth, pathH);
                 mutationCtx.fill();
                 mutationCtx.stroke();
             }
             
             mutationCtx.fillStyle = '#64748b';
             mutationCtx.font = '7px Share Tech Mono';
-            mutationCtx.fillText("SPEED PHENOTYPE DISTRIBUTION", 5, 10);
+            mutationCtx.fillText("NANOBOT (CYAN) VS PATHOGEN (PINK) SPEED PHENOTYPES", 5, 10);
         }
     }
 
-    // 9. CORE SIMULATION LOOP
+    // 10. CORE SIMULATION LOOP
     function loop() {
         if (isRunning) {
             for (let s = 0; s < simSpeed; s++) {
                 simTicks++;
+
+                // A. Mission Timer countdown updates
+                if (activeMission !== 'freeplay' && simTicks % 60 === 0) {
+                    missionTimeLeft = Math.max(0, missionTimeLeft - 1);
+                    missionTimerText.textContent = `${missionTimeLeft.toFixed(0)}.0s`;
+                    checkMissionEnd();
+                }
                 
                 grid.update();
                 
@@ -588,7 +815,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (healthyCells[i].energy <= 0) {
                         const path = new Pathogen(healthyCells[i].x, healthyCells[i].y);
                         pathogens.push(path);
-                        healthyCells.splice(i, 1);
                         logEvent("Pathology event: Healthy cell infected & mutated.");
                     }
                 }
@@ -596,6 +822,18 @@ document.addEventListener("DOMContentLoaded", () => {
                 // Pathogens update
                 for (let path of pathogens) {
                     path.update(grid, SIM_WIDTH, SIM_HEIGHT, healthyCells, obstacles, triggerAudioSynth);
+                }
+                
+                // Pathogens mutation / split checks
+                const newPathogens = [];
+                for (let path of pathogens) {
+                    const child = path.reproduce();
+                    if (child) {
+                        newPathogens.push(child);
+                    }
+                }
+                if (newPathogens.length > 0) {
+                    pathogens.push(...newPathogens);
                 }
                 
                 for (let i = pathogens.length - 1; i >= 0; i--) {

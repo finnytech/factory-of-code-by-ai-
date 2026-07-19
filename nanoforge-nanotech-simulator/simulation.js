@@ -113,10 +113,8 @@ function resolveObstacleCollision(entity, obstacles) {
             const nx = (entity.x - obs.x) / (d || 1);
             const ny = (entity.y - obs.y) / (d || 1);
             
-            // Push outside obstacle boundary
             entity.x = obs.x + nx * minDist;
             
-            // Reflect velocity with minor damping
             const dot = entity.vx * nx + entity.vy * ny;
             entity.vx = (entity.vx - 2 * dot * nx) * 0.75;
             entity.vy = (entity.vy - 2 * dot * ny) * 0.75;
@@ -150,22 +148,32 @@ class Food {
     }
 }
 
-// PATHOGEN CLASS
+// PATHOGEN CLASS (With Mutable DNA & reproduction)
 class Pathogen {
-    constructor(x, y) {
+    constructor(x, y, dna = null) {
         this.x = x;
         this.y = y;
-        this.vx = (Math.random() - 0.5) * 2;
-        this.vy = (Math.random() - 0.5) * 2;
-        this.radius = 6;
+        
+        // Genes
+        this.dna = dna ?? {
+            maxSpeed: 1.6,
+            radius: 6,
+            mutationRate: 0.15
+        };
+        
+        this.radius = this.dna.radius;
+        this.maxSpeed = this.dna.maxSpeed;
+        
+        this.vx = (Math.random() - 0.5) * this.maxSpeed;
+        this.vy = (Math.random() - 0.5) * this.maxSpeed;
         this.energy = 100;
-        this.maxSpeed = 1.6;
         this.infectCooldown = 0;
     }
     
     update(grid, width, height, healthyCells, obstacles, triggerAudioCallback) {
+        // Emit toxin chemical repellent
         grid.addVal(this.x, this.y, 'repellent', 0.35);
-        this.energy -= 0.12;
+        this.energy -= 0.14; // baseline metabolic rate
         if (this.infectCooldown > 0) this.infectCooldown--;
         
         let target = null;
@@ -201,10 +209,9 @@ class Pathogen {
         this.x += this.vx;
         this.y += this.vy;
         
-        // Handle obstacle reflections
         resolveObstacleCollision(this, obstacles);
         
-        // Boundary checks
+        // Boundaries
         if (this.x < this.radius) { this.x = this.radius; this.vx *= -1; }
         if (this.x > width - this.radius) { this.x = width - this.radius; this.vx *= -1; }
         if (this.y < this.radius) { this.y = this.radius; this.vy *= -1; }
@@ -214,7 +221,7 @@ class Pathogen {
             for (let cell of healthyCells) {
                 if (Math.hypot(cell.x - this.x, cell.y - this.y) < (this.radius + cell.radius)) {
                     cell.energy -= 40;
-                    this.energy += 30;
+                    this.energy += 35;
                     this.infectCooldown = 40;
                     if (triggerAudioCallback) triggerAudioCallback('infect');
                     break;
@@ -223,11 +230,46 @@ class Pathogen {
         }
     }
     
+    reproduce() {
+        if (this.energy > 200) {
+            this.energy *= 0.48; // split energy
+            
+            const mutateVal = (val, rate) => {
+                const modifier = 1 + (Math.random() - 0.5) * 2 * rate;
+                return val * modifier;
+            };
+            
+            const mr = this.dna.mutationRate;
+            const childDna = {
+                maxSpeed: Math.max(0.8, Math.min(3.5, mutateVal(this.dna.maxSpeed, mr))),
+                radius: Math.max(3.5, Math.min(11, mutateVal(this.dna.radius, mr))),
+                mutationRate: this.dna.mutationRate
+            };
+            
+            const offset = this.radius * 2.5;
+            const angle = Math.random() * Math.PI * 2;
+            const cx = this.x + Math.cos(angle) * offset;
+            const cy = this.y + Math.sin(angle) * offset;
+            
+            const child = new Pathogen(cx, cy, childDna);
+            child.energy = this.energy;
+            return child;
+        }
+        return null;
+    }
+    
     draw(ctx) {
         ctx.save();
         ctx.shadowBlur = 12;
-        ctx.shadowColor = '#ff007f';
-        ctx.fillStyle = '#ff0055';
+        
+        // Speed-dependent coloring: Faster = Deep Magenta/Indigo, Slower = Vibrant Red
+        const speedRatio = Math.max(0, Math.min(1, (this.maxSpeed - 0.8) / 2.7));
+        const r = Math.floor(255 - speedRatio * 150);
+        const g = 0;
+        const b = Math.floor(80 + speedRatio * 175);
+        
+        ctx.shadowColor = `rgb(${r}, ${g}, ${b})`;
+        ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 1;
         
@@ -248,7 +290,7 @@ class Pathogen {
     }
 }
 
-// HEALTHY CELL CLASS (With Mitosis / Nutrient seeking)
+// HEALTHY CELL CLASS
 class HealthyCell {
     constructor(x, y, energy = 100) {
         this.x = x;
@@ -261,10 +303,8 @@ class HealthyCell {
     }
     
     update(width, height, foodArray, obstacles) {
-        // Slow energy decrease
         this.energy -= 0.08;
         
-        // Seek food to survive and multiply
         let closestFood = null;
         let minD = 130;
         for (let food of foodArray) {
@@ -276,7 +316,6 @@ class HealthyCell {
         }
         
         if (closestFood) {
-            // Seek food
             let fx = closestFood.x - this.x;
             let fy = closestFood.y - this.y;
             const dist = Math.hypot(fx, fy);
@@ -285,7 +324,6 @@ class HealthyCell {
             this.vx = this.vx * 0.92 + fx * 0.08;
             this.vy = this.vy * 0.92 + fy * 0.08;
         } else {
-            // Wander
             this.vx += (Math.random() - 0.5) * 0.15;
             this.vy += (Math.random() - 0.5) * 0.15;
             const speed = Math.hypot(this.vx, this.vy);
@@ -298,16 +336,13 @@ class HealthyCell {
         this.x += this.vx;
         this.y += this.vy;
         
-        // Handle obstacle reflections
         resolveObstacleCollision(this, obstacles);
         
-        // Boundaries
         if (this.x < this.radius) { this.x = this.radius; this.vx *= -1; }
         if (this.x > width - this.radius) { this.x = width - this.radius; this.vx *= -1; }
         if (this.y < this.radius) { this.y = this.radius; this.vy *= -1; }
         if (this.y > height - this.radius) { this.y = height - this.radius; this.vy *= -1; }
         
-        // Eat food
         for (let food of foodArray) {
             if (!food.eaten && Math.hypot(food.x - this.x, food.y - this.y) < (this.radius + food.radius)) {
                 food.eaten = true;
@@ -318,7 +353,7 @@ class HealthyCell {
     
     mitosis() {
         if (this.energy > 175) {
-            this.energy = 80; // halve parent energy
+            this.energy = 80; 
             
             const offset = this.radius * 2;
             const angle = Math.random() * Math.PI * 2;

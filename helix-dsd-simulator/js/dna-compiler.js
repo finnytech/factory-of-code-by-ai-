@@ -69,6 +69,86 @@ const DNAThermo = {
             }
         }
         return false;
+    },
+
+    optimizeSequences(sequences, tempC = 37, sodiumM = 0.05) {
+        const current = { ...sequences };
+        
+        const evaluateDomain = (domainName, seq) => {
+            const Tm = this.calculateTm(seq, sodiumM);
+            const hasHairpin = this.checkHairpins(seq);
+            const isToehold = domainName.startsWith('t');
+            
+            let penalty = 0;
+            if (hasHairpin) penalty += 500;
+            
+            const targetTm = isToehold ? (tempC + 6) : (tempC + 20);
+            const diff = Math.abs(Tm - targetTm);
+            penalty += diff * 3;
+            
+            for (let i = 0; i < seq.length - 3; i++) {
+                if (seq[i] === seq[i+1] && seq[i] === seq[i+2] && seq[i] === seq[i+3]) {
+                    penalty += 50;
+                }
+            }
+            return -penalty;
+        };
+
+        const evaluateAll = (seqMap) => {
+            let total = 0;
+            for (const [dom, seq] of Object.entries(seqMap)) {
+                if (!dom.endsWith('*')) {
+                    total += evaluateDomain(dom, seq);
+                }
+            }
+            return total;
+        };
+
+        const bases = ['A', 'C', 'G', 'T'];
+        const comp = { 'A': 'T', 'T': 'A', 'C': 'G', 'G': 'C' };
+        
+        const baseDomains = Object.keys(current).filter(d => !d.endsWith('*'));
+        if (baseDomains.length === 0) return current;
+
+        let bestScore = evaluateAll(current);
+        const maxSteps = 150;
+        
+        for (let step = 0; step < maxSteps; step++) {
+            const dom = baseDomains[Math.floor(Math.random() * baseDomains.length)];
+            const seq = current[dom];
+            if (!seq || seq.length === 0) continue;
+            
+            const pos = Math.floor(Math.random() * seq.length);
+            const originalChar = seq[pos];
+            
+            let newChar = originalChar;
+            while (newChar === originalChar) {
+                newChar = bases[Math.floor(Math.random() * 4)];
+            }
+            
+            const mutatedSeq = seq.substring(0, pos) + newChar + seq.substring(pos + 1);
+            const mutatedComp = mutatedSeq.split('').reverse().map(b => comp[b] || b).join('');
+            
+            const oldSeq = current[dom];
+            const oldComp = current[dom + '*'];
+            
+            current[dom] = mutatedSeq;
+            if (current[dom + '*'] !== undefined) {
+                current[dom + '*'] = mutatedComp;
+            }
+            
+            const newScore = evaluateAll(current);
+            if (newScore > bestScore) {
+                bestScore = newScore;
+            } else {
+                current[dom] = oldSeq;
+                if (oldComp !== undefined) {
+                    current[dom + '*'] = oldComp;
+                }
+            }
+        }
+        
+        return current;
     }
 };
 

@@ -13,10 +13,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const simStatusIndicator = document.getElementById('sim-status-indicator');
     const simStatusText = document.getElementById('sim-status-text');
     
-    // Custom Reaction Panel Elements
+    // Custom Reaction & Portability Panel Elements
     const customReactionSection = document.getElementById('custom-reaction-section');
     const customReactionsInput = document.getElementById('custom-reactions-input');
     const btnCompileCustom = document.getElementById('btn-compile-custom');
+    const btnExportConfig = document.getElementById('btn-export-config');
+    const btnImportConfig = document.getElementById('btn-import-config');
+    const importFileInput = document.getElementById('import-file-input');
     
     // Sliders
     const paramTemp = document.getElementById('param-temp');
@@ -51,6 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const codeReactions = document.getElementById('compiler-reactions-code');
     const listSequences = document.getElementById('compiler-sequences-list');
     const schematicsViewer = document.getElementById('compiler-schematics-viewer');
+    const btnOptimizeSequences = document.getElementById('btn-optimize-sequences');
     
     // Active simulation instance variables
     let currentPreset = 'or';
@@ -104,6 +108,126 @@ document.addEventListener('DOMContentLoaded', () => {
     btnCompileCustom.addEventListener('click', () => {
         stopSimulation();
         loadPreset('custom', customReactionsInput.value);
+    });
+
+    // Export simulation parameters to JSON file
+    btnExportConfig.addEventListener('click', () => {
+        const config = {
+            preset: currentPreset,
+            T: Number(paramTemp.value),
+            sodium: Number(paramSodium.value),
+            k1: Number(paramK1.value),
+            k2: Number(paramK2.value),
+            kleak: Number(paramKLeak.value),
+            solverMode: selectMode.value,
+            customReactions: customReactionsInput.value,
+            concentrations: {}
+        };
+        document.querySelectorAll('.reactant-input').forEach(input => {
+            config.concentrations[input.dataset.id] = Number(input.value);
+        });
+        
+        const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `helix-dsd-config-${currentPreset}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    });
+
+    // Import simulation parameters from JSON file
+    btnImportConfig.addEventListener('click', () => {
+        importFileInput.click();
+    });
+
+    importFileInput.addEventListener('change', (e) => {
+        if (!e.target.files || e.target.files.length === 0) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const config = JSON.parse(event.target.result);
+                
+                currentPreset = config.preset || 'or';
+                document.querySelectorAll('.preset-card').forEach(card => {
+                    card.classList.toggle('active', card.dataset.preset === currentPreset);
+                });
+                
+                if (currentPreset === 'custom') {
+                    customReactionSection.classList.remove('hidden');
+                    customReactionsInput.value = config.customReactions || '';
+                } else {
+                    customReactionSection.classList.add('hidden');
+                }
+
+                paramTemp.value = config.T !== undefined ? config.T : 37;
+                valTemp.textContent = `${paramTemp.value}°C`;
+                
+                paramSodium.value = config.sodium !== undefined ? config.sodium : 50;
+                valSodium.textContent = `${paramSodium.value} mM`;
+                
+                paramK1.value = config.k1 !== undefined ? config.k1 : 5;
+                valK1.textContent = `${paramK1.value}.0e+6 M⁻¹s⁻¹`;
+                
+                paramK2.value = config.k2 !== undefined ? config.k2 : 3;
+                valK2.textContent = `${paramK2.value}.0e+5 s⁻¹`;
+                
+                paramKLeak.value = config.kleak !== undefined ? config.kleak : 10;
+                valKLeak.textContent = `${paramKLeak.value}.0e+1 M⁻¹s⁻¹`;
+
+                selectMode.value = config.solverMode || 'kinetic';
+                runMode = selectMode.value;
+
+                stopSimulation();
+                compiledData = DNACompiler.compile(currentPreset, currentPreset === 'custom' ? customReactionsInput.value : '');
+                window.activeReactions = compiledData.reactions;
+
+                if (config.concentrations) {
+                    compiledData.species.forEach(sp => {
+                        if (config.concentrations[sp.id] !== undefined) {
+                            sp.init = config.concentrations[sp.id];
+                        }
+                    });
+                }
+
+                renderReactantInputs();
+                buildSimulatorInstance();
+                renderReactionsCode();
+                renderSequencesList();
+                renderSchematics();
+                
+                renderer.buildLegend(compiledData.species);
+                renderer.syncParticles(simulator.state, compiledData.species);
+                renderer.plotChart(simulator.history, compiledData.species);
+                document.getElementById('chart-time').textContent = `Time: 0.0s`;
+
+            } catch (err) {
+                alert('Invalid JSON config file: ' + err.message);
+            }
+        };
+        reader.readAsText(e.target.files[0]);
+    });
+
+    // Run genetic optimization on sequences to resolve secondary structures/hairpin risks
+    btnOptimizeSequences.addEventListener('click', () => {
+        if (!compiledData || !compiledData.sequences) return;
+        
+        const tempC = Number(paramTemp.value);
+        const sodiumM = Number(paramSodium.value) / 1000;
+        
+        btnOptimizeSequences.innerHTML = `<i class="fa-solid fa-rotate fa-spin"></i> Optimizing...`;
+        btnOptimizeSequences.disabled = true;
+
+        setTimeout(() => {
+            compiledData.sequences = DNACompiler.thermo.optimizeSequences(compiledData.sequences, tempC, sodiumM);
+            
+            // Refresh compiled views
+            renderSequencesList();
+            renderSchematics();
+            
+            btnOptimizeSequences.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles"></i> Optimize Domains`;
+            btnOptimizeSequences.disabled = false;
+        }, 400);
     });
 
 

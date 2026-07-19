@@ -86,6 +86,14 @@
                                 <span>Custom CRN</span>
                             </button>
                         </div>
+                        <div class="config-action-row" style="display: flex; gap: 0.5rem; margin-top: 0.6rem;">
+                            <button id="btn-export-config" class="btn btn-secondary" style="flex: 1; padding: 0.35rem 0.5rem; font-size: 0.72rem;" title="Export current setup to JSON">
+                                <i class="fa-solid fa-file-export"></i> Export
+                            </button>
+                            <button id="btn-import-config" class="btn btn-secondary" style="flex: 1; padding: 0.35rem 0.5rem; font-size: 0.72rem;" title="Import setup from JSON">
+                                <i class="fa-solid fa-file-import"></i> Import
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Custom Reaction Builder -->
@@ -212,6 +220,12 @@
                             <pre><code id="compiler-reactions-code">// Compiled reactions...</code></pre>
                         </div>
                         <div id="tab-sequences" class="tab-panel">
+                            <div class="sequences-header-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.65rem;">
+                                <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Domain Sequences</span>
+                                <button id="btn-optimize-sequences" class="btn btn-secondary" style="padding: 0.25rem 0.55rem; font-size: 0.68rem; gap: 0.3rem;" title="Optimize domain sequences to resolve warnings">
+                                    <i class="fa-solid fa-wand-magic-sparkles"></i> Optimize Domains
+                                </button>
+                            </div>
                             <div class="sequence-list" id="compiler-sequences-list">
                                 <!-- Dynamic sequence list -->
                             </div>
@@ -236,6 +250,9 @@
             </div>
         </footer>
     </div>
+
+    <!-- Hidden config file input -->
+    <input type="file" id="import-file-input" class="hidden" accept=".json">
 
     <!-- Core App Scripts -->
     <script src="js/dna-compiler.js"></script>

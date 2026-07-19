@@ -1,0 +1,185 @@
+:root {
+    --bg-color: #0b0c10;
+    --panel-bg: #1f2833;
+    --neon-pink: #f92672;
+    --neon-blue: #66d9ef;
+    --neon-purple: #ae81ff;
+    --text-color: #c5c6c7;
+    --key-white: #ffffff;
+    --key-black: #111111;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: 'Courier New', Courier, monospace;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+
+.container {
+    width: 90%;
+    max-width: 900px;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+h1 {
+    color: var(--neon-pink);
+    text-shadow: 0 0 10px var(--neon-pink), 0 0 20px var(--neon-pink);
+    letter-spacing: 5px;
+    margin-bottom: 0.5rem;
+}
+
+.synth-panel {
+    background-color: var(--panel-bg);
+    border: 2px solid var(--neon-blue);
+    border-radius: 10px;
+    padding: 2rem;
+    box-shadow: 0 0 15px rgba(102, 217, 239, 0.3);
+}
+
+.controls {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+}
+
+.control-group {
+    background: rgba(0,0,0,0.3);
+    padding: 1rem;
+    border-radius: 5px;
+    border: 1px solid #333;
+    width: 30%;
+    min-width: 200px;
+    margin-bottom: 1rem;
+}
+
+.control-group h3 {
+    color: var(--neon-purple);
+    margin-top: 0;
+    border-bottom: 1px solid var(--neon-purple);
+    padding-bottom: 0.5rem;
+}
+
+label {
+    display: block;
+    margin-top: 1rem;
+    font-size: 0.9rem;
+}
+
+select, input[type="range"] {
+    width: 100%;
+    margin-top: 0.5rem;
+    background: #000;
+    color: var(--neon-blue);
+    border: 1px solid var(--neon-blue);
+    padding: 5px;
+}
+
+input[type="range"] {
+    -webkit-appearance: none;
+    height: 5px;
+    border-radius: 5px;
+    outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    background: var(--neon-pink);
+    cursor: pointer;
+}
+
+span {
+    font-size: 0.8rem;
+    color: var(--neon-blue);
+    display: inline-block;
+    margin-top: 5px;
+}
+
+.visualizer-container {
+    width: 100%;
+    height: 150px;
+    background: #000;
+    border: 2px solid var(--neon-purple);
+    border-radius: 5px;
+    margin-bottom: 2rem;
+    overflow: hidden;
+}
+
+canvas {
+    width: 100%;
+    height: 100%;
+}
+
+.keyboard {
+    display: flex;
+    justify-content: center;
+    position: relative;
+    height: 150px;
+    background: #222;
+    padding: 10px;
+    border-radius: 5px;
+}
+
+.key {
+    width: 40px;
+    height: 100%;
+    background: var(--key-white);
+    border: 1px solid #ccc;
+    border-radius: 0 0 5px 5px;
+    margin: 0 2px;
+    cursor: pointer;
+    box-shadow: 0 5px 5px rgba(0,0,0,0.5);
+    transition: background 0.1s;
+    position: relative;
+    z-index: 1;
+}
+
+.key.black {
+    background: var(--key-black);
+    width: 30px;
+    height: 60%;
+    margin-left: -17px;
+    margin-right: -17px;
+    z-index: 2;
+    border: 1px solid #000;
+}
+
+.key.active {
+    background: var(--neon-blue);
+    box-shadow: 0 0 10px var(--neon-blue);
+}
+
+.key.black.active {
+    background: var(--neon-pink);
+    box-shadow: 0 0 10px var(--neon-pink);
+}
+
+.key-label {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #333;
+    font-weight: bold;
+    font-size: 0.8rem;
+    pointer-events: none;
+}
+
+.key.black .key-label {
+    color: #fff;
+    bottom: 20px;
+}

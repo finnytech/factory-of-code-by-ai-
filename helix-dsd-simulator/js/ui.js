@@ -21,6 +21,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Sliders
     const paramTemp = document.getElementById('param-temp');
     const valTemp = document.getElementById('val-temp');
+    const paramSodium = document.getElementById('param-sodium');
+    const valSodium = document.getElementById('val-sodium');
     const paramK1 = document.getElementById('param-k1');
     const valK1 = document.getElementById('val-k1');
     const paramK2 = document.getElementById('param-k2');
@@ -109,6 +111,13 @@ document.addEventListener('DOMContentLoaded', () => {
     paramTemp.addEventListener('input', (e) => {
         valTemp.textContent = `${e.target.value}°C`;
         if (simulator) simulator.params.T = Number(e.target.value);
+        renderSequencesList();
+    });
+
+    paramSodium.addEventListener('input', (e) => {
+        valSodium.textContent = `${e.target.value} mM`;
+        if (simulator) simulator.params.sodium = Number(e.target.value) / 1000;
+        renderSequencesList();
     });
 
     paramK1.addEventListener('input', (e) => {
@@ -211,6 +220,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function buildSimulatorInstance() {
         const params = {
             T: Number(paramTemp.value),
+            sodium: Number(paramSodium.value) / 1000, // mM to M
             k1: Number(paramK1.value),
             k2: Number(paramK2.value),
             kleak: Number(paramKLeak.value)
@@ -261,18 +271,67 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderSequencesList() {
         listSequences.innerHTML = '';
+        
+        const tempC = Number(paramTemp.value);
+        const sodiumM = Number(paramSodium.value) / 1000;
+        
+        let warningsList = [];
+        let htmlBuffer = '';
+        
         for (const [domain, seq] of Object.entries(compiledData.sequences)) {
-            const seqItem = document.createElement('div');
-            seqItem.className = 'seq-item';
-            seqItem.innerHTML = `
-                <div class="seq-header">
-                    <span class="seq-name">${domain}</span>
-                    <span class="seq-type">${domain.startsWith('t') ? 'Toehold (6bp)' : 'Specificity (18bp)'}</span>
+            const Tm = DNACompiler.thermo.calculateTm(seq, sodiumM);
+            const dG = DNACompiler.thermo.calculateDeltaG(seq, tempC);
+            const hasHairpin = DNACompiler.thermo.checkHairpins(seq);
+            
+            let statusClass = 'badge-stable';
+            let statusText = 'Stable';
+            
+            if (hasHairpin) {
+                statusClass = 'badge-hairpin';
+                statusText = 'Hairpin Risk';
+                warningsList.push(`Domain <strong>${domain}</strong> has secondary hairpin structures.`);
+            } else if (Tm < tempC) {
+                statusClass = 'badge-unstable';
+                statusText = 'Unstable (Tm < T)';
+                warningsList.push(`Domain <strong>${domain}</strong> melting temperature (${Tm.toFixed(1)}°C) is below reaction temperature (${tempC}°C).`);
+            } else if (Tm < tempC + 6) {
+                statusClass = 'badge-hairpin';
+                statusText = 'Weak Hybrid';
+            }
+
+            htmlBuffer += `
+                <div class="seq-item">
+                    <div class="seq-header">
+                        <span class="seq-name">${domain}</span>
+                        <span class="seq-type">${domain.startsWith('t') ? 'Toehold' : 'Active'} (${seq.length}bp)</span>
+                        <span class="seq-badge ${statusClass}">${statusText}</span>
+                    </div>
+                    <div class="seq-body">${seq}</div>
+                    <div class="seq-thermo-row">
+                        <div class="seq-thermo-metric">Tm: <span>${Tm.toFixed(1)}°C</span></div>
+                        <div class="seq-thermo-metric">ΔG: <span>${dG.toFixed(2)} kcal/mol</span></div>
+                    </div>
                 </div>
-                <div class="seq-body">${seq}</div>
             `;
-            listSequences.appendChild(seqItem);
         }
+
+        if (warningsList.length > 0) {
+            const banner = document.createElement('div');
+            banner.className = 'thermo-warning-banner';
+            banner.innerHTML = `
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <div>
+                    <strong>Thermodynamic Alert:</strong><br>
+                    ${warningsList.map(w => `&bull; ${w}`).join('<br>')}
+                </div>
+            `;
+            listSequences.appendChild(banner);
+        }
+
+        const listDiv = document.createElement('div');
+        listDiv.className = 'sequence-list-wrapper';
+        listDiv.innerHTML = htmlBuffer;
+        listSequences.appendChild(listDiv);
     }
 
     function renderSchematics() {

@@ -40,19 +40,27 @@ class DSDSimulator {
         });
     }
 
-    // Get current rate constants adjusted for Temperature
+    // Get current rate constants adjusted for Temperature and Salt concentration
     getRate(rateKey) {
-        // T-dependence scaling (Arrhenius approximation)
         const T = this.params.T || 37;
+        const sodium = this.params.sodium || 0.05; // default 50 mM = 0.05 M
         const baseRate = Number(this.params[rateKey] || (rateKey === 'k1' ? 5 : 3));
         
         // k1 value: range 1-10 mapped to 1e6 scale, k2 value: range 1-10 mapped to 1e5 scale
         const scale = rateKey === 'k1' ? 1e-6 : (rateKey === 'k2' ? 1e-5 : 1e-6);
         const actualRate = baseRate * scale;
 
-        // Temperature factor: Q10 temperature coefficient ≈ 2.0 per 10 degrees
+        // Temperature factor (Q10 coefficient ≈ 2.0 per 10 degrees)
         const tempFactor = Math.pow(2.0, (T - 37) / 10);
-        return actualRate * tempFactor;
+
+        // Salt shielding factor (hybridization rate scales with ionic strength)
+        // baseline is 0.05 M (50 mM). We approximate scale with log of sodium concentration.
+        const saltFactor = Math.max(0.1, 1.0 + 0.6 * Math.log10(sodium / 0.05));
+        
+        // Only scale binding/displacement rate (k1), not unimolecular dissociation leak or rates directly
+        const rateFactor = rateKey === 'k1' ? saltFactor : 1.0;
+        
+        return actualRate * tempFactor * rateFactor;
     }
 
     // Evaluate derivatives for ODE solver dy/dt = f(t, y)

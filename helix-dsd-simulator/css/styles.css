@@ -931,3 +931,72 @@ input:checked + .slider:before {
     text-anchor: middle;
 }
 
+/* Thermodynamic Warning Banners & Badges */
+.thermo-warning-banner {
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    border-radius: 6px;
+    padding: 0.6rem 0.85rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.72rem;
+    color: #fca5a5;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    line-height: 1.4;
+}
+
+.thermo-warning-banner i {
+    margin-top: 0.15rem;
+    color: var(--danger);
+    font-size: 0.95rem;
+}
+
+.seq-thermo-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.35rem;
+    font-size: 0.68rem;
+    font-family: var(--font-mono);
+    color: var(--text-secondary);
+}
+
+.seq-thermo-metric {
+    background: rgba(255,255,255,0.03);
+    padding: 0.1rem 0.35rem;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+}
+
+.seq-thermo-metric span:last-child {
+    font-weight: bold;
+    color: var(--accent);
+}
+
+.seq-badge {
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 0.1rem 0.35rem;
+    border-radius: 4px;
+    margin-left: auto;
+}
+
+.seq-badge.badge-stable {
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    color: #a7f3d0;
+}
+
+.seq-badge.badge-unstable {
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #fca5a5;
+}
+
+.seq-badge.badge-hairpin {
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    color: #fde68a;
+}
+
+

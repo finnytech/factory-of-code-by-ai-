@@ -4,7 +4,77 @@
  * domain structures, and nucleotide sequences.
  */
 
+const DNAThermo = {
+    calculateTm(sequence, sodiumConc = 0.05) {
+        if (!sequence) return 0;
+        const seq = sequence.toUpperCase();
+        const N = seq.length;
+        if (N === 0) return 0;
+        
+        let GC = 0;
+        let AT = 0;
+        for (let i = 0; i < N; i++) {
+            const b = seq[i];
+            if (b === 'G' || b === 'C') GC++;
+            else if (b === 'A' || b === 'T') AT++;
+        }
+        
+        if (N < 14) {
+            return 2 * AT + 4 * GC;
+        } else {
+            const pctGC = (GC / N) * 100;
+            const logNa = Math.log10(Math.max(1e-4, sodiumConc));
+            return 81.5 + 16.6 * logNa + 0.41 * pctGC - 675 / N;
+        }
+    },
+
+    calculateDeltaG(sequence, tempC = 37) {
+        if (!sequence) return 0;
+        const seq = sequence.toUpperCase();
+        const N = seq.length;
+        if (N === 0) return 0;
+
+        let GC = 0;
+        let AT = 0;
+        for (let i = 0; i < N; i++) {
+            const b = seq[i];
+            if (b === 'G' || b === 'C') GC++;
+            else if (b === 'A' || b === 'T') AT++;
+        }
+
+        let dH = - (7.8 * AT + 11.0 * GC);
+        let dS = - (22.0 * AT + 28.0 * GC);
+
+        dH += 0.2;
+        dS += -5.7;
+
+        const TK = tempC + 273.15;
+        return dH - TK * (dS / 1000);
+    },
+
+    checkHairpins(sequence) {
+        if (!sequence) return false;
+        const seq = sequence.toUpperCase();
+        const len = seq.length;
+        if (len < 11) return false;
+        
+        for (let i = 0; i <= len - 11; i++) {
+            const stem1 = seq.substr(i, 4);
+            const comp = { 'A': 'T', 'T': 'A', 'C': 'G', 'G': 'C' };
+            const stem1_rc = stem1.split('').reverse().map(b => comp[b] || b).join('');
+            
+            const searchIndex = seq.indexOf(stem1_rc, i + 7);
+            if (searchIndex !== -1) {
+                return true;
+            }
+        }
+        return false;
+    }
+};
+
 const DNACompiler = {
+    thermo: DNAThermo,
+
     // Generate a random DNA sequence of length L
     generateRandomSequence(length) {
         const bases = ['A', 'C', 'G', 'T'];

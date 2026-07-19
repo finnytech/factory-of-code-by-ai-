@@ -1,0 +1,100 @@
+:root {
+    --bg-color: #050510;
+    --text-color: #00ffcc;
+    --accent-color: #ff0055;
+    --grid-color: rgba(0, 255, 204, 0.1);
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: 'Courier New', Courier, monospace;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden;
+    background-image:
+        linear-gradient(var(--grid-color) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+    background-size: 20px 20px;
+}
+
+#game-container {
+    position: relative;
+    border: 2px solid var(--text-color);
+    box-shadow: 0 0 20px var(--text-color);
+    background-color: rgba(5, 5, 16, 0.9);
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px;
+    border-bottom: 2px solid var(--text-color);
+}
+
+h1 {
+    margin: 0;
+    font-size: 24px;
+    text-shadow: 0 0 10px var(--text-color);
+}
+
+#stats span {
+    margin-left: 20px;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+canvas {
+    display: block;
+    cursor: crosshair;
+}
+
+#game-over {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 40px;
+    border: 2px solid var(--accent-color);
+    box-shadow: 0 0 30px var(--accent-color);
+}
+
+#game-over h2 {
+    color: var(--accent-color);
+    font-size: 36px;
+    margin-top: 0;
+    text-shadow: 0 0 15px var(--accent-color);
+}
+
+#game-over p {
+    font-size: 24px;
+    margin-bottom: 30px;
+}
+
+button {
+    background: transparent;
+    color: var(--text-color);
+    border: 2px solid var(--text-color);
+    padding: 10px 20px;
+    font-size: 18px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+button:hover {
+    background: var(--text-color);
+    color: var(--bg-color);
+    box-shadow: 0 0 15px var(--text-color);
+}
+
+.hidden {
+    display: none !important;
+}

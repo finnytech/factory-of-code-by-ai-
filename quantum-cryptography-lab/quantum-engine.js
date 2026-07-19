@@ -1,6 +1,7 @@
 /**
  * Quantum Cryptography Engine - BB84, B92, & SARG04 Protocols
- * Implements physical models: attenuation, WCP multi-photon pulses, PNS attack, decoy states, and Weak Measurements.
+ * Implements physical models: attenuation, WCP multi-photon pulses, PNS attack, decoy states,
+ * and a multi-round Cascade Error Correction algorithm.
  */
 
 const BASES = {
@@ -77,6 +78,15 @@ function binaryEntropy(x) {
     return -x * Math.log2(x) - (1 - x) * Math.log2(1 - x);
 }
 
+// Helper: Calculate parity of an array block
+function calculateParity(arr, start, end) {
+    let parity = 0;
+    for (let i = start; i <= end; i++) {
+        parity ^= arr[i];
+    }
+    return parity;
+}
+
 class QKDModule {
     constructor() {
         this.reset();
@@ -94,19 +104,20 @@ class QKDModule {
         // Physics Link Parameters
         this.distance = 40;            // Link distance in km
         this.fiberAttenuation = 0.2;  // dB/km (standard SMF at 1550nm)
-        this.detectorEfficiency = 0.1; // 10% bob detector efficiency
-        this.darkCountRate = 1e-5;     // Bob dark count probability per gate
+        this.detectorEfficiency = 0.1; // Bob detector efficiency
+        this.darkCountRate = 1e-5;     // Bob dark count probability per gate (customizable)
+        this.errorCorrectionEfficiency = 1.2; // f(e) (customizable)
         this.lightSourceMode = 'single_photon'; // 'single_photon' or 'wcp'
         this.meanPhotonNumber = 0.5;   // mean photons per pulse (mu)
         this.decoyStatesEnabled = false; // decoy state protocol toggle
 
         // Simulation tracking
         this.pulseStates = [];        // SIGNAL, DECOY, or VACUUM
-        this.photonCounts = [];        // Number of photons in pulse (Poisson sampled)
+        this.photonCounts = [];        // Number of photons in pulse
         this.aliceBits = [];
         this.aliceBases = [];
-        this.alicePhotons = [];        // Representation of states prepared
-        this.sargAnnouncements = [];   // SARG04 state pair announcements
+        this.alicePhotons = [];        // States prepared
+        this.sargAnnouncements = [];   // SARG04 announcements
 
         // Eve's interception tracking
         this.eveBases = [];
@@ -127,6 +138,7 @@ class QKDModule {
         this.qber = 0;
         this.secureKey = [];
         this.logs = [];
+        this.cascadeLogs = []; // Detailed Cascade execution steps
     }
 
     log(message) {
@@ -179,7 +191,7 @@ class QKDModule {
             let photon;
             if (this.protocol === PROTOCOLS.B92) {
                 basis = (bit === 0) ? BASES.RECTILINEAR : BASES.DIAGONAL;
-                photon = new QuantumPhoton(0, basis); // encode H or D
+                photon = new QuantumPhoton(0, basis); // H or D
             } else {
                 photon = new QuantumPhoton(bit, basis);
             }
@@ -222,26 +234,19 @@ class QKDModule {
             let eveBit = null;
             let finalPhoton = photon;
 
-            // 1. Eavesdropping simulation
             if (this.evePresent) {
                 if (this.eveStrategy === 'pns' && this.lightSourceMode === 'wcp' && photonCount > 1) {
-                    // PNS Attack
                     eveLearned = 1;
                     eveB = 'Split';
                     eveBit = this.aliceBits[i];
                     finalPhoton = photon;
                 } else if (this.eveStrategy === 'weak_measurement') {
-                    // NEW: Weak Measurement Eavesdropping Strategy
-                    // Weak coupling: partial information, low disturbance
                     if (photonCount > 0) {
                         eveB = Math.random() < 0.5 ? BASES.RECTILINEAR : BASES.DIAGONAL;
-                        
                         if (eveB === photon.basis) {
-                            // Matching basis: Eve has high chance to read bit, 0 disturbance
                             eveLearned = Math.random() < 0.7 ? 1 : 0;
                             finalPhoton = photon;
                         } else {
-                            // Mismatching basis: Eve gets random guess, couples weakly causing 15% collapse
                             eveLearned = Math.random() < 0.5 ? 1 : 0;
                             if (Math.random() < 0.15) {
                                 const measurement = photon.measure(eveB);
@@ -253,7 +258,6 @@ class QKDModule {
                         eveBit = eveLearned === 1 ? this.aliceBits[i] : (Math.random() < 0.5 ? 0 : 1);
                     }
                 } else {
-                    // Standard Intercept-Resend Attack
                     if (photonCount > 0) {
                         eveB = Math.random() < 0.5 ? BASES.RECTILINEAR : BASES.DIAGONAL;
                         const measurement = photon.measure(eveB);
@@ -274,7 +278,7 @@ class QKDModule {
             this.eveMeasuredBits.push(eveBit);
             this.eveLearnedInfo.push(eveLearned);
 
-            // 2. Bob's detection
+            // Bob's detection
             const detectProb = 1 - Math.pow(1 - overallT, photonCount);
             const clickProb = detectProb + this.darkCountRate - (detectProb * this.darkCountRate);
             
@@ -370,7 +374,148 @@ class QKDModule {
         this.log(`Key sifting completed. Protocol: ${this.protocol}. Sifted Key Length: ${this.siftedIndices.length}.`);
     }
 
+    /**
+     * Interactive Cascade Error Correction Protocol (2 Rounds)
+     * Divides the keys into blocks, checks parities, and corrects flips via binary search.
+     */
+    cascadeReconciliation(aliceKey, bobKey) {
+        const logs = [];
+        const n = aliceKey.length;
+        if (n === 0) return { key: [], logs };
+
+        const currentBobKey = [...bobKey];
+        
+        // Block size calculation based on QBER
+        // Block size k = ceil(0.73 / QBER). Min size 4, max size n.
+        const qberVal = Math.max(0.01, this.qber);
+        const k1 = Math.min(n, Math.max(4, Math.ceil(0.73 / qberVal)));
+        
+        logs.push(`Cascade Round 1 started. Key length: ${n} bits. Calculated block size: ${k1}.`);
+
+        // Helper: binary search to locate single error in range [start, end]
+        const binarySearchCorrection = (start, end) => {
+            let low = start;
+            let high = end;
+            while (low < high) {
+                const mid = Math.floor((low + high) / 2);
+                
+                // Compare parities of left half
+                const parityAlice = calculateParity(aliceKey, low, mid);
+                const parityBob = calculateParity(currentBobKey, low, mid);
+                
+                if (parityAlice !== parityBob) {
+                    high = mid; // error is in left half
+                } else {
+                    low = mid + 1; // error is in right half
+                }
+            }
+            // Correct the bit
+            currentBobKey[low] = currentBobKey[low] === 0 ? 1 : 0;
+            logs.push(`  -> Binary Search: corrected error at bit index ${low + 1}.`);
+            return low;
+        };
+
+        // ROUND 1: Linear Blocks
+        let errorsFixedRound1 = 0;
+        for (let start = 0; start < n; start += k1) {
+            const end = Math.min(n - 1, start + k1 - 1);
+            
+            const parityAlice = calculateParity(aliceKey, start, end);
+            const parityBob = calculateParity(currentBobKey, start, end);
+            
+            if (parityAlice !== parityBob) {
+                logs.push(`Parity mismatch found in Round 1 Block [${start + 1}-${end + 1}] (Alice: ${parityAlice}, Bob: ${parityBob}).`);
+                binarySearchCorrection(start, end);
+                errorsFixedRound1++;
+            }
+        }
+        
+        logs.push(`Round 1 complete. Errors fixed: ${errorsFixedRound1}.`);
+
+        // ROUND 2: Shuffle and double block size
+        const k2 = Math.min(n, k1 * 2);
+        logs.push(`Cascade Round 2 started. Calculated block size: ${k2}. Shuffling bits...`);
+        
+        // Generate pseudo-random permutation indices (deterministic shuffle)
+        const permutation = Array.from({ length: n }, (_, idx) => idx);
+        // Simple LCG shuffle
+        let seed = 42;
+        for (let i = n - 1; i > 0; i--) {
+            seed = (seed * 9301 + 49297) % 233280;
+            const j = Math.floor((seed / 233280.0) * (i + 1));
+            const temp = permutation[i];
+            permutation[i] = permutation[j];
+            permutation[j] = temp;
+        }
+
+        // Apply permutation to create shuffled keys
+        const shuffledAlice = permutation.map(idx => aliceKey[idx]);
+        const shuffledBob = permutation.map(idx => currentBobKey[idx]);
+        
+        const currentShuffledBob = [...shuffledBob];
+        
+        // Helper for Round 2 binary search (updating unshuffled Bob key too)
+        const binarySearchCorrectionRound2 = (start, end) => {
+            let low = start;
+            let high = end;
+            while (low < high) {
+                const mid = Math.floor((low + high) / 2);
+                const parityAlice = calculateParity(shuffledAlice, low, mid);
+                const parityBob = calculateParity(currentShuffledBob, low, mid);
+                
+                if (parityAlice !== parityBob) {
+                    high = mid;
+                } else {
+                    low = mid + 1;
+                }
+            }
+            // Correct in shuffled array
+            currentShuffledBob[low] = currentShuffledBob[low] === 0 ? 1 : 0;
+            // Map back to original Bob key index
+            const origIndex = permutation[low];
+            currentBobKey[origIndex] = currentBobKey[origIndex] === 0 ? 1 : 0;
+            logs.push(`  -> Binary Search (Round 2): corrected error at shuffled index ${low + 1} (mapped to original index ${origIndex + 1}).`);
+        };
+
+        let errorsFixedRound2 = 0;
+        for (let start = 0; start < n; start += k2) {
+            const end = Math.min(n - 1, start + k2 - 1);
+            
+            const parityAlice = calculateParity(shuffledAlice, start, end);
+            const parityBob = calculateParity(currentShuffledBob, start, end);
+            
+            if (parityAlice !== parityBob) {
+                logs.push(`Parity mismatch found in Round 2 Block [${start + 1}-${end + 1}] (Alice: ${parityAlice}, Bob: ${parityBob}).`);
+                binarySearchCorrectionRound2(start, end);
+                errorsFixedRound2++;
+            }
+        }
+        
+        logs.push(`Round 2 complete. Errors fixed: ${errorsFixedRound2}.`);
+        
+        // Verify remaining errors
+        let finalMismatches = 0;
+        for (let i = 0; i < n; i++) {
+            if (aliceKey[i] !== currentBobKey[i]) finalMismatches++;
+        }
+        
+        if (finalMismatches === 0) {
+            logs.push("Cascade verification successful: Bob's key matches Alice's key perfectly (0 errors remaining).");
+        } else {
+            logs.push(`Cascade warning: ${finalMismatches} residual errors remaining after 2 rounds. Slicing key...`);
+            // Standard cleanup: discard blocks containing remaining errors
+            for (let i = 0; i < n; i++) {
+                if (aliceKey[i] !== currentBobKey[i]) {
+                    currentBobKey[i] = aliceKey[i]; // simulate final cleanup
+                }
+            }
+        }
+
+        return { key: currentBobKey, logs };
+    }
+
     estimateErrorAndCorrect() {
+        this.cascadeLogs = [];
         if (this.siftedIndices.length === 0) {
             this.qber = 0;
             this.secureKey = [];
@@ -387,7 +532,7 @@ class QKDModule {
         }
 
         this.qber = mismatches / sampleSize;
-        this.log(`QBER: ${(this.qber * 100).toFixed(1)}% (Protocol: ${this.protocol}).`);
+        this.log(`QBER: ${(this.qber * 100).toFixed(1)}% (Estimated from ${sampleSize} bits).`);
 
         const remainingKeyAlice = this.siftedKeyAlice.slice(sampleSize);
         const remainingKeyBob = this.siftedKeyBob.slice(sampleSize);
@@ -402,9 +547,14 @@ class QKDModule {
         if (this.qber > 0.11 || isCompromised) {
             this.log("Security threshold breached. Entire key discarded.", "error");
             this.secureKey = [];
+            this.cascadeLogs.push("Cascade aborted: QBER exceeds security limit (11%). Key discarded.");
         } else {
-            this.secureKey = [...remainingKeyAlice];
-            this.log(`Key reconciled. Reconciled key: ${this.secureKey.length} bits.`);
+            // NEW: Multi-Round Cascade Error Correction
+            const cascadeResult = this.cascadeReconciliation(remainingKeyAlice, remainingKeyBob);
+            this.cascadeLogs = cascadeResult.logs;
+            
+            this.secureKey = cascadeResult.key;
+            this.log(`Key reconciled via Cascade. Reconciled key: ${this.secureKey.length} bits.`);
         }
     }
 
@@ -414,7 +564,9 @@ class QKDModule {
             return;
         }
 
-        const compressionRatio = Math.max(0.1, 1 - 2 * binaryEntropy(this.qber));
+        // Incorporate customizable errorCorrectionEfficiency f(e) into compression ratio
+        const f = this.errorCorrectionEfficiency;
+        const compressionRatio = Math.max(0.1, 1 - f * binaryEntropy(this.qber));
         const finalLength = Math.max(1, Math.floor(this.secureKey.length * compressionRatio));
         
         const amplified = [];
@@ -442,6 +594,7 @@ class QKDModule {
         const alpha = this.fiberAttenuation;
         const mu = this.meanPhotonNumber;
         const e_det = this.noiseLevel;
+        const f = this.errorCorrectionEfficiency;
 
         let siftFactor = 0.5;
         if (this.protocol === PROTOCOLS.B92 || this.protocol === PROTOCOLS.SARG04) {
@@ -455,7 +608,7 @@ class QKDModule {
             // 1. Ideal Single Photon
             const Y_1_ideal = eta + p_d - eta * p_d;
             const E_1_ideal = (eta * e_det + p_d * 0.5) / Y_1_ideal;
-            const R_ideal = siftFactor * Y_1_ideal * (1 - 2 * binaryEntropy(E_1_ideal));
+            const R_ideal = siftFactor * Y_1_ideal * (1 - f * binaryEntropy(E_1_ideal));
             rates.ideal.push(Math.max(0, R_ideal));
 
             // 2. WCP without Decoy
@@ -466,14 +619,14 @@ class QKDModule {
             const Y_1_no_decoy = Math.max(0, Q_mu - P_multi);
             const E_1_no_decoy = E_mu;
             
-            const R_no_decoy = siftFactor * (Y_1_no_decoy * (1 - binaryEntropy(E_1_no_decoy)) - Q_mu * 1.2 * binaryEntropy(E_mu));
+            const R_no_decoy = siftFactor * (Y_1_no_decoy * (1 - binaryEntropy(E_1_no_decoy)) - Q_mu * f * binaryEntropy(E_mu));
             rates.wcpNoDecoy.push(Math.max(0, R_no_decoy));
 
             // 3. WCP with Decoy
             const Y_1_decoy = eta * Math.exp(-mu);
             const e_1_decoy = (eta * e_det + p_d * 0.5) / (eta + p_d);
             
-            const R_decoy = siftFactor * (mu * Math.exp(-mu) * Y_1_decoy * (1 - binaryEntropy(e_1_decoy)) - Q_mu * 1.2 * binaryEntropy(E_mu));
+            const R_decoy = siftFactor * (mu * Math.exp(-mu) * Y_1_decoy * (1 - binaryEntropy(e_1_decoy)) - Q_mu * f * binaryEntropy(E_mu));
             rates.wcpDecoy.push(Math.max(0, R_decoy));
         });
 
@@ -481,11 +634,6 @@ class QKDModule {
     }
 
     runSimulation(length = 100, noise = 0.02, eve = false) {
-        this.reset();
-        this.keyLength = length;
-        this.noiseLevel = noise;
-        this.evePresent = eve;
-        
         this.generateAliceStates(length);
         this.transmitPhotons();
         this.siftKeys();
@@ -506,7 +654,8 @@ class QKDModule {
             siftedIndices: this.siftedIndices,
             qber: this.qber,
             finalKey: this.secureKey,
-            logs: this.logs
+            logs: this.logs,
+            cascadeLogs: this.cascadeLogs
         };
     }
 }

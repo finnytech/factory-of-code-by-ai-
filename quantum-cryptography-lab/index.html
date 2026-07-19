@@ -79,6 +79,24 @@
                     <input type="range" id="mu-slider" min="0.1" max="1.0" step="0.05" value="0.5">
                 </div>
 
+                <!-- NEW: Dark Count Rate Slider (exponents) -->
+                <div class="control-group">
+                    <label for="dark-count-slider">
+                        <span>Bob Dark Count Rate</span>
+                        <span class="label-val" id="dark-count-val">10^-5</span>
+                    </label>
+                    <input type="range" id="dark-count-slider" min="3" max="6" step="1" value="5">
+                </div>
+
+                <!-- NEW: Error Correction Efficiency f(e) -->
+                <div class="control-group">
+                    <label for="f-efficiency-slider">
+                        <span>EC Efficiency f(e)</span>
+                        <span class="label-val" id="f-efficiency-val">1.2</span>
+                    </label>
+                    <input type="range" id="f-efficiency-slider" min="1.0" max="1.5" step="0.05" value="1.2">
+                </div>
+
                 <!-- Decoy States Protocol -->
                 <div class="switch-control" id="decoy-container">
                     <span style="font-size: 0.9rem; font-weight: 500; color: var(--text-secondary);">Decoy State Protocol</span>
@@ -112,7 +130,7 @@
                 <button class="btn-primary" id="btn-run">Run Full Simulation</button>
                 <button class="btn-secondary" id="btn-step">Start Step-by-Step</button>
                 
-                <!-- NEW Sound FX Toggle button -->
+                <!-- Sound FX Toggle button -->
                 <button class="btn-secondary" id="btn-sound" style="margin-top: 0.75rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; width: 100%;">
                     <span id="sound-icon">🔊</span> Procedural Sound: ON
                 </button>
@@ -284,7 +302,7 @@
                     <div style="width: 42px;"></div>
                 </div>
                 <div class="terminal-body" id="terminal-console">
-                    <div class="log-line"><span>[12:30:00]</span> Physical Quantum Cryptography Lab active. Poisson coherent laser sources calibrated.</div>
+                    <div class="log-line"><span>[13:00:00]</span> Physical Quantum Cryptography Lab active. Poisson coherent laser sources calibrated.</div>
                 </div>
             </div>
 

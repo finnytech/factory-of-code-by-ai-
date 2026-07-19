@@ -1,6 +1,6 @@
 /**
  * Quantum Cryptography Lab - Application Logic & Visualization
- * Binds QKD physical models, challenges, and Web Audio SFX synthesis to the GUI.
+ * Binds QKD physical models, Cascade reconciliation, and Web Audio SFX to the GUI.
  */
 
 // Procedural Web Audio Synth Class
@@ -64,7 +64,7 @@ class SoundSynth {
         if (!this.enabled) return;
         this.init();
         
-        const bufferSize = this.audioCtx.sampleRate * 0.1; // 100ms
+        const bufferSize = this.audioCtx.sampleRate * 0.1;
         const buffer = this.audioCtx.createBuffer(1, bufferSize, this.audioCtx.sampleRate);
         const data = buffer.getChannelData(0);
         for (let i = 0; i < bufferSize; i++) {
@@ -131,7 +131,7 @@ class SoundSynth {
         this.init();
         
         const now = this.audioCtx.currentTime;
-        const notes = [261.6, 329.6, 392.0, 523.3]; // C4, E4, G4, C5
+        const notes = [261.6, 329.6, 392.0, 523.3];
         
         notes.forEach((freq, idx) => {
             const osc = this.audioCtx.createOscillator();
@@ -183,6 +183,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const decoyContainer = document.getElementById('decoy-container');
     const eveStrategySelect = document.getElementById('eve-strategy-select');
     const eveStrategyContainer = document.getElementById('eve-strategy-container');
+    
+    // NEW: Bob Dark Count & EC Efficiency Sliders
+    const darkCountSlider = document.getElementById('dark-count-slider');
+    const darkCountVal = document.getElementById('dark-count-val');
+    const fEfficiencySlider = document.getElementById('f-efficiency-slider');
+    const fEfficiencyVal = document.getElementById('f-efficiency-val');
     
     // DOM Elements - Challenges
     const btnActivateC1 = document.getElementById('btn-activate-c1');
@@ -289,6 +295,22 @@ document.addEventListener('DOMContentLoaded', () => {
         drawChart();
     });
     
+    // Bind Bob Dark Count Exponent Slider
+    darkCountSlider.addEventListener('input', (e) => {
+        const exp = e.target.value;
+        darkCountVal.textContent = `10^-${exp}`;
+        qkd.darkCountRate = Math.pow(10, -parseInt(exp));
+        drawChart();
+    });
+    
+    // Bind EC Efficiency f(e) Slider
+    fEfficiencySlider.addEventListener('input', (e) => {
+        const f = e.target.value;
+        fEfficiencyVal.textContent = f;
+        qkd.errorCorrectionEfficiency = parseFloat(f);
+        drawChart();
+    });
+    
     sourceModeSelect.addEventListener('change', (e) => {
         const mode = e.target.value;
         qkd.lightSourceMode = mode;
@@ -358,7 +380,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         activeChallenge = id;
-        synth.init(); // enable audio context safely
+        synth.init();
         
         if (id === 1) {
             challenge1Card.classList.add('active-mission');
@@ -392,7 +414,7 @@ document.addEventListener('DOMContentLoaded', () => {
             sourceModeSelect.value = 'single_photon';
             decoyToggle.checked = false;
             eveToggle.checked = true;
-            eveStrategySelect.value = 'weak_measurement'; // preset weak measurement!
+            eveStrategySelect.value = 'weak_measurement';
             keyLengthSlider.value = 100;
             keyLengthVal.textContent = '100';
             
@@ -451,7 +473,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 challengeStatuses[0] = true;
                 badgeC1.className = 'challenge-badge badge-solved';
                 badgeC1.textContent = 'Solved';
-                synth.playSuccess(); // trigger arpeggio sound
+                synth.playSuccess();
                 logConsole("CHALLENGE SOLVED: Decoy states protected transmission under PNS attack!", "success");
                 activeChallenge = null;
                 challenge1Card.classList.remove('active-mission');
@@ -466,7 +488,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 challengeStatuses[1] = true;
                 badgeC2.className = 'challenge-badge badge-solved';
                 badgeC2.textContent = 'Solved';
-                synth.playSuccess(); // success sound
+                synth.playSuccess();
                 logConsole(`CHALLENGE SOLVED: Eve successfully intercepted ${eveBitsRead} bits without raising QBER over 11%.`, "success");
                 activeChallenge = null;
                 challenge2Card.classList.remove('active-mission');
@@ -480,7 +502,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 challengeStatuses[2] = true;
                 badgeC3.className = 'challenge-badge badge-solved';
                 badgeC3.textContent = 'Solved';
-                synth.playSuccess(); // success sound
+                synth.playSuccess();
                 logConsole("CHALLENGE SOLVED: B92 key successfully established!", "success");
                 activeChallenge = null;
                 challenge3Card.classList.remove('active-mission');
@@ -616,7 +638,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (Math.random() < 0.0012 * distanceFactor) {
                         photon.absorbed = true;
                         createExplosion(photon.x, photon.y, 'rgba(255, 255, 255, 0.2)', 4);
-                        synth.playLost(); // trigger procedural fade sound
+                        synth.playLost();
                     }
                 }
             } else {
@@ -636,7 +658,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     photon.color = 'var(--neon-orange)';
                     createExplosion(midX, middleY, 'var(--neon-orange)', 12);
-                    synth.playAlarm(); // trigger procedural siren alarm
+                    synth.playAlarm();
                     logConsole(`Pulse #${photon.index + 1}: Intercepted and measured by Eve in basis ${simulationResults.eveBases[photon.index]}`, 'warning');
                 }
             }
@@ -656,7 +678,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         matchText = (simulationResults.aliceBases[photon.index] === basisVal) ? 'sifted match' : 'basis mismatch';
                     }
                     
-                    // Procedural click ping sound - pitch scaled based on basis
                     const clickFreq = (basisVal === BASES.RECTILINEAR) ? 1150 : 1350;
                     synth.playClick(clickFreq);
                     
@@ -730,7 +751,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const count = simulationResults.aliceBits.length;
         const spacing = 45;
         
-        // Play procedural laser swoop
         synth.playLaser();
         
         for (let i = 0; i < count; i++) {
@@ -864,6 +884,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const tempModule = new QKDModule();
         tempModule.detectorEfficiency = qkd.detectorEfficiency;
         tempModule.darkCountRate = qkd.darkCountRate;
+        tempModule.errorCorrectionEfficiency = qkd.errorCorrectionEfficiency; // Custom EC efficiency f(e)!
         tempModule.fiberAttenuation = qkd.fiberAttenuation;
         tempModule.meanPhotonNumber = qkd.meanPhotonNumber;
         tempModule.noiseLevel = qkd.noiseLevel;
@@ -927,7 +948,7 @@ document.addEventListener('DOMContentLoaded', () => {
         chartCtx.restore();
     }
     
-    // Set Active wizard step
+    // Set Active Wizard Step
     function goToStep(stepIndex) {
         currentStep = stepIndex;
         steps.forEach((s, idx) => {
@@ -941,7 +962,7 @@ document.addEventListener('DOMContentLoaded', () => {
             logConsole(`Phase 1: Alice prepared ${qkd.protocol} state streams.`);
         } else if (currentStep === 1) {
             btnStep.textContent = "Bob Detects Pulses";
-            synth.init(); // enable AudioContext on user interaction
+            synth.init();
             launchPhotonStream();
         } else if (currentStep === 2) {
             btnStep.textContent = "Sift Bases";
@@ -956,6 +977,18 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (currentStep === 4) {
             btnStep.textContent = "Simulation Reset";
             qkd.estimateErrorAndCorrect();
+            
+            // Print Cascade interactive error correction logs to the debug console
+            if (simulationResults && simulationResults.cascadeLogs) {
+                simulationResults.cascadeLogs.forEach(line => {
+                    logConsole(`[Cascade EC] ${line}`);
+                });
+            } else if (qkd.cascadeLogs) {
+                qkd.cascadeLogs.forEach(line => {
+                    logConsole(`[Cascade EC] ${line}`);
+                });
+            }
+            
             qkd.applyPrivacyAmplification();
             updateStatsRow();
             renderFinalKeys();
@@ -1169,7 +1202,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btnRun.addEventListener('click', () => {
         isStepMode = false;
         cancelAnimationFrame(animationFrameId);
-        synth.init(); // Activate synthesizer AudioContext on user gesture
+        synth.init();
         
         const size = parseInt(keyLengthSlider.value);
         const noise = parseFloat(noiseSlider.value) / 100;
@@ -1188,6 +1221,14 @@ document.addEventListener('DOMContentLoaded', () => {
         renderTableData(true);
         renderFinalKeys();
         drawChart();
+        
+        // Print Cascade logs after simulation complete
+        if (simulationResults && simulationResults.cascadeLogs) {
+            simulationResults.cascadeLogs.forEach(line => {
+                logConsole(`[Cascade EC] ${line}`);
+            });
+        }
+        
         checkChallengeOutcomes();
         
         logConsole("Physics QKD simulation complete. Statistical results verified.", "success");
@@ -1195,7 +1236,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Step by Step button
     btnStep.addEventListener('click', () => {
-        synth.init(); // Activate synthesizer on user gesture
+        synth.init();
         
         if (!isStepMode) {
             isStepMode = true;
@@ -1215,6 +1256,11 @@ document.addEventListener('DOMContentLoaded', () => {
             qkd.eveStrategy = eveStrategySelect.value;
             qkd.protocol = protocolSelect.value;
             
+            // Sync new sliders
+            const dcExp = darkCountSlider.value;
+            qkd.darkCountRate = Math.pow(10, -parseInt(dcExp));
+            qkd.errorCorrectionEfficiency = parseFloat(fEfficiencySlider.value);
+            
             qkd.generateAliceStates(size);
             simulationResults = {
                 aliceBits: qkd.aliceBits,
@@ -1226,7 +1272,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 eveMeasuredBits: qkd.eveMeasuredBits,
                 photonCounts: qkd.photonCounts,
                 pulseStates: qkd.pulseStates,
-                sargAnnouncements: qkd.sargAnnouncements
+                sargAnnouncements: qkd.sargAnnouncements,
+                cascadeLogs: qkd.cascadeLogs
             };
             
             qkd.bobBases = Array(size).fill('-');

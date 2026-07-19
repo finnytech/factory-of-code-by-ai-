@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Helix DSD Simulator - DNA Strand Displacement Computer</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Premium Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main Style Sheet -->
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Top Navigation / Control Bar -->
+        <header class="app-header">
+            <div class="brand">
+                <i class="fa-solid fa-dna logo-icon"></i>
+                <div class="logo-text">
+                    <h1>HELIX DSD</h1>
+                    <span>DNA Strand Displacement Simulator</span>
+                </div>
+            </div>
+            <div class="simulation-controls">
+                <button id="btn-play" class="btn btn-primary" title="Start Simulation">
+                    <i class="fa-solid fa-play"></i> Run
+                </button>
+                <button id="btn-pause" class="btn btn-secondary" title="Pause Simulation" disabled>
+                    <i class="fa-solid fa-pause"></i> Pause
+                </button>
+                <button id="btn-reset" class="btn btn-danger" title="Reset Simulation">
+                    <i class="fa-solid fa-rotate-left"></i> Reset
+                </button>
+                <div class="control-divider"></div>
+                <div class="control-group">
+                    <label for="select-mode">Solver Mode</label>
+                    <select id="select-mode">
+                        <option value="kinetic" selected>Kinetic (ODE/RK4)</option>
+                        <option value="stochastic">Stochastic (Gillespie SSA)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="header-status">
+                <span class="status-indicator idle" id="sim-status-indicator"></span>
+                <span id="sim-status-text">Status: Idle</span>
+            </div>
+        </header>
+
+        <!-- Main Workspace -->
+        <main class="workspace">
+            <!-- Left Panel: Control / Logic Config -->
+            <section class="panel panel-left">
+                <div class="panel-header">
+                    <h2><i class="fa-solid fa-sliders"></i> Configuration</h2>
+                </div>
+                <div class="panel-content scrollable">
+                    <!-- Presets Selector -->
+                    <div class="config-section">
+                        <h3>Circuit Presets</h3>
+                        <div class="presets-grid">
+                            <button class="preset-card active" data-preset="or">
+                                <i class="fa-solid fa-circle-nodes"></i>
+                                <span>OR Gate</span>
+                            </button>
+                            <button class="preset-card" data-preset="and">
+                                <i class="fa-solid fa-square-plus"></i>
+                                <span>AND Gate</span>
+                            </button>
+                            <button class="preset-card" data-preset="not">
+                                <i class="fa-solid fa-ban"></i>
+                                <span>NOT Gate</span>
+                            </button>
+                            <button class="preset-card" data-preset="halfadder">
+                                <i class="fa-solid fa-microchip"></i>
+                                <span>Half Adder</span>
+                            </button>
+                            <button class="preset-card" data-preset="oscillator">
+                                <i class="fa-solid fa-wave-square"></i>
+                                <span>Oscillator</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Chemical Settings -->
+                    <div class="config-section">
+                        <h3>Simulation Parameters</h3>
+                        <div class="input-group">
+                            <div class="input-label-row">
+                                <label for="param-temp">Temperature (T)</label>
+                                <span class="input-val" id="val-temp">37°C</span>
+                            </div>
+                            <input type="range" id="param-temp" min="20" max="60" value="37" step="1">
+                        </div>
+                        <div class="input-group">
+                            <div class="input-label-row">
+                                <label for="param-k1">Toehold Binding rate (k₁)</label>
+                                <span class="input-val" id="val-k1">1.0e+6 M⁻¹s⁻¹</span>
+                            </div>
+                            <input type="range" id="param-k1" min="1" max="10" value="5" step="0.5">
+                        </div>
+                        <div class="input-group">
+                            <div class="input-label-row">
+                                <label for="param-k2">Displacement rate (k₂)</label>
+                                <span class="input-val" id="val-k2">1.0e+5 s⁻¹</span>
+                            </div>
+                            <input type="range" id="param-k2" min="1" max="10" value="3" step="0.5">
+                        </div>
+                        <div class="input-group">
+                            <div class="input-label-row">
+                                <label for="param-kleak">Leak Rate (k_leak)</label>
+                                <span class="input-val" id="val-kleak">1.0e+1 M⁻¹s⁻¹</span>
+                            </div>
+                            <input type="range" id="param-kleak" min="0" max="50" value="10" step="1">
+                        </div>
+                    </div>
+
+                    <!-- Initial Concentrations -->
+                    <div class="config-section">
+                        <h3>Reactant Initial Quantities (nM)</h3>
+                        <div id="reactant-inputs-container">
+                            <!-- Dynamic inputs added by presets -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Center Panel: Visual Molecular Tube -->
+            <section class="panel panel-center">
+                <div class="panel-header">
+                    <h2><i class="fa-solid fa-flask"></i> Molecular Reaction Tube (2D Simulation)</h2>
+                    <div class="panel-header-actions">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="toggle-collisions" checked>
+                            <span class="slider"></span>
+                        </label>
+                        <span class="toggle-label">Animate Collisions</span>
+                    </div>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="molecular-canvas"></canvas>
+                    <div class="canvas-overlay" id="canvas-overlay">
+                        <p class="overlay-text">Click "Run" to witness DNA strand displacements</p>
+                    </div>
+                    <!-- Detailed Info Card on Clicked Particle -->
+                    <div class="particle-card hidden" id="particle-detail-card">
+                        <button class="close-card" id="btn-close-card"><i class="fa-solid fa-xmark"></i></button>
+                        <h4 id="card-particle-name">Strand Alpha</h4>
+                        <div class="card-domains" id="card-particle-domains"></div>
+                        <div class="card-sequence" id="card-particle-seq"></div>
+                        <div class="card-stat">
+                            <span>Status:</span> <span id="card-particle-state">Free Signal</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Panel: Kinetic Plot and Code Compiler -->
+            <section class="panel panel-right">
+                <!-- Top Right: Kinetic Graph -->
+                <div class="panel-section subpanel-chart">
+                    <div class="panel-header">
+                        <h2><i class="fa-solid fa-chart-line"></i> Kinetics Graph</h2>
+                        <div class="panel-header-actions">
+                            <span class="chart-time-label" id="chart-time">Time: 0.0s</span>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <svg id="kinetic-chart-svg" viewBox="0 0 500 250"></svg>
+                        <div class="chart-legend" id="chart-legend">
+                            <!-- Dynamic legends -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom Right: Compiler Output -->
+                <div class="panel-section subpanel-compiler">
+                    <div class="panel-header">
+                        <h2><i class="fa-solid fa-terminal"></i> DSD Bio-Compiler</h2>
+                    </div>
+                    <div class="compiler-tabs">
+                        <button class="tab-btn active" data-tab="reactions">Reactions</button>
+                        <button class="tab-btn" data-tab="sequences">Sequences</button>
+                        <button class="tab-btn" data-tab="schematics">Gate Schematics</button>
+                    </div>
+                    <div class="compiler-tab-content scrollable">
+                        <div id="tab-reactions" class="tab-panel active">
+                            <pre><code id="compiler-reactions-code">// Compiled reactions...</code></pre>
+                        </div>
+                        <div id="tab-sequences" class="tab-panel">
+                            <div class="sequence-list" id="compiler-sequences-list">
+                                <!-- Dynamic sequence list -->
+                            </div>
+                        </div>
+                        <div id="tab-schematics" class="tab-panel">
+                            <div class="schematics-viewer" id="compiler-schematics-viewer">
+                                <!-- ASCII/SVG layout of gates -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer status -->
+        <footer class="app-footer">
+            <div class="footer-left">
+                <i class="fa-solid fa-circle-check text-success"></i> Compiled successfully &bull; Bio-logic engine version 1.0.0
+            </div>
+            <div class="footer-right">
+                Press Esc to close overlays &bull; Double click canvas to reset force fields
+            </div>
+        </footer>
+    </div>
+
+    <!-- Core App Scripts -->
+    <script src="js/dna-compiler.js"></script>
+    <script src="js/simulator.js"></script>
+    <script src="js/renderer.js"></script>
+    <script src="js/ui.js"></script>
+</body>
+</html>

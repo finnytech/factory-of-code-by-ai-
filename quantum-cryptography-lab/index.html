@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Quantum Key Distribution (QKD) Simulator & Visualizer. Explore the physics, mechanics, and security of the BB84 protocol with noise and eavesdropping simulations.">
+    <title>Quantum Cryptography Lab — BB84 Protocol Simulator</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <div class="title-badge">Quantum Secure Communications</div>
+            <h1>Quantum Cryptography Lab</h1>
+            <p class="subtitle">Interactive Quantum Key Distribution (QKD) Simulator & Analyzer based on the BB84 Protocol.</p>
+        </header>
+
+        <!-- Main Dashboard -->
+        <div class="dashboard-grid">
+            
+            <!-- Sidebar Controls -->
+            <div class="glass-card">
+                <h2 class="card-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--neon-cyan);"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                    Simulation Controls
+                </h2>
+                
+                <div class="control-group">
+                    <label for="key-length-slider">
+                        <span>Photon Stream Size</span>
+                        <span class="label-val" id="key-length-val">50</span>
+                    </label>
+                    <input type="range" id="key-length-slider" min="10" max="150" step="5" value="50">
+                </div>
+
+                <div class="control-group">
+                    <label for="noise-slider">
+                        <span>Fiber Decoherence Noise</span>
+                        <span class="label-val" id="noise-val">5%</span>
+                    </label>
+                    <input type="range" id="noise-slider" min="0" max="50" step="1" value="5">
+                </div>
+
+                <div class="switch-control">
+                    <span style="font-size: 0.9rem; font-weight: 500; color: var(--text-secondary);">Active Eavesdropper (Eve)</span>
+                    <label class="switch">
+                        <input type="checkbox" id="eve-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                
+                <button class="btn-primary" id="btn-run">Run Full Protocol</button>
+                <button class="btn-secondary" id="btn-step">Start Step-by-Step</button>
+                
+                <div style="margin-top: 1.5rem; font-size: 0.8rem; color: var(--text-muted); border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1rem;">
+                    <p style="margin-bottom: 0.5rem;"><strong style="color: var(--neon-cyan);">Rectilinear basis (+)</strong> encodes 0 as 0° (→) and 1 as 90° (↑).</p>
+                    <p><strong style="color: var(--neon-purple);">Diagonal basis (x)</strong> encodes 0 as 45° (↗) and 1 as 135° (↖).</p>
+                </div>
+            </div>
+
+            <!-- Workspace -->
+            <div>
+                <!-- Wizard Steps Indicator -->
+                <div class="wizard-steps">
+                    <div class="step active" id="step-0" data-step="0">
+                        <h4>1. Prepare</h4>
+                        <p>Alice States</p>
+                    </div>
+                    <div class="step" id="step-1" data-step="1">
+                        <h4>2. Transmit</h4>
+                        <p>Quantum Channel</p>
+                    </div>
+                    <div class="step" id="step-2" data-step="2">
+                        <h4>3. Measure</h4>
+                        <p>Bob Detection</p>
+                    </div>
+                    <div class="step" id="step-3" data-step="3">
+                        <h4>4. Sift</h4>
+                        <p>Bases Compare</p>
+                    </div>
+                    <div class="step" id="step-4" data-step="4">
+                        <h4>5. Amplify & Key</h4>
+                        <p>Error Correction</p>
+                    </div>
+                </div>
+
+                <!-- Quantum Channel Visualizer -->
+                <div class="glass-card" style="padding: 1rem; margin-bottom: 1.5rem;">
+                    <h3 class="card-title" style="font-size: 1.1rem; margin-bottom: 0.75rem; border-bottom: none; padding-bottom: 0;">
+                        Quantum Channel Visualizer
+                    </h3>
+                    <div class="visualizer-container">
+                        <div class="channel-tag" id="alice-tag">Alice Transmitter</div>
+                        <div class="channel-tag" id="eve-tag">Eve Interceptor</div>
+                        <div class="channel-tag" id="bob-tag">Bob Receiver</div>
+                        <canvas id="quantum-canvas"></canvas>
+                    </div>
+                </div>
+
+                <!-- Stats Dashboard Row -->
+                <div class="stats-row">
+                    <div class="stat-item">
+                        <div class="stat-label">Sifted Key Yield</div>
+                        <div class="stat-value info" id="stat-yield">-</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Estimated QBER</div>
+                        <div class="stat-value" id="stat-qber">-</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Security Analysis</div>
+                        <div class="stat-value" id="stat-status">-</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Final Key Length</div>
+                        <div class="stat-value info" id="stat-key-len">-</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Key Summary Results & Table -->
+            <div class="glass-card console-card" style="margin-bottom: 1.5rem;">
+                <h3 class="card-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--neon-cyan);"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                    Generated Quantum Keys
+                </h3>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+                    <div>
+                        <div class="stat-label" style="margin-bottom: 0.5rem;">Reconciled Shared Secret Key</div>
+                        <div class="key-string-panel" id="secret-key-reconciled">No key generated yet. Run simulation to begin.</div>
+                    </div>
+                    <div>
+                        <div class="stat-label" style="margin-bottom: 0.5rem;">Final Amplified Secure Key</div>
+                        <div class="key-string-panel" id="secret-key-amplified" style="color: var(--neon-cyan); text-shadow: var(--glow-cyan);">No key generated yet.</div>
+                    </div>
+                </div>
+
+                <div class="stat-label" style="margin-bottom: 0.5rem;">Photon State Mapping & Measurement Details</div>
+                <div class="table-wrapper">
+                    <table id="state-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Alice Bit</th>
+                                <th>Alice Basis</th>
+                                <th>Polarization</th>
+                                <th class="eve-col">Eve Basis</th>
+                                <th class="eve-col">Eve Bit</th>
+                                <th>Bob Basis</th>
+                                <th>Bob Bit</th>
+                                <th>Sift Match</th>
+                            </tr>
+                        </thead>
+                        <tbody id="state-table-body">
+                            <tr>
+                                <td colspan="9" style="text-align: center; color: var(--text-muted); padding: 2rem;">No simulation data available. Click "Run Full Protocol" to generate states.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Terminal log -->
+            <div class="glass-card console-card">
+                <div class="terminal-header">
+                    <div class="terminal-dots">
+                        <div class="dot dot-red"></div>
+                        <div class="dot dot-yellow"></div>
+                        <div class="dot dot-green"></div>
+                    </div>
+                    <div class="terminal-title">QUANTUM LAB TERMINAL CONSOLE</div>
+                    <div style="width: 42px;"></div>
+                </div>
+                <div class="terminal-body" id="terminal-console">
+                    <div class="log-line"><span>[13:12:00]</span> Quantum Communication System initialized and ready for deployment.</div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="quantum-engine.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

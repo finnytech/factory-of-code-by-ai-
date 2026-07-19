@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EchoForge - Sonic Ecosystem Synthesizer</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>Echo<span>Forge</span></h1>
+    <p class="tag">A living ecosystem that sings itself into evolution</p>
+  </header>
+
+  <main class="layout">
+    <section class="stage">
+      <div class="canvas-wrap">
+        <canvas id="world"></canvas>
+      </div>
+      <p id="status" class="status">Press Start to breathe life &amp; sound into the world</p>
+    </section>
+
+    <aside class="panel">
+      <div class="controls">
+        <button id="btn-start" class="primary">Start</button>
+        <button id="btn-add">Spawn 6</button>
+        <button id="btn-reset">Reset</button>
+      </div>
+
+      <div class="control-row">
+        <label for="vol">Master Volume</label>
+        <input id="vol" type="range" min="0" max="1" step="0.01" value="0.6" />
+      </div>
+
+      <div class="stats">
+        <h2>Telemetry</h2>
+        <div class="stat"><span>Population</span><b id="stat-pop">0</b></div>
+        <div class="stat"><span>Generation</span><b id="stat-gen">0</b></div>
+        <div class="stat"><span>Total Born</span><b id="stat-born">0</b></div>
+        <div class="stat"><span>Total Died</span><b id="stat-died">0</b></div>
+        <div class="stat"><span>Avg Fitness</span><b id="stat-fit">0.000</b></div>
+      </div>
+
+      <div class="legend">
+        <h2>How it works</h2>
+        <ul>
+          <li>Each glowing cell is a <b>sonic organism</b> with a genome.</li>
+          <li>Genes map to <b>pitch, waveform, filter &amp; rhythm</b>.</li>
+          <li>They eat energy (green field), reproduce with mutation, and die.</li>
+          <li>Every note you hear is one organism living its life.</li>
+        </ul>
+      </div>
+    </aside>
+  </main>
+
+  <script src="genome.js"></script>
+  <script src="organism.js"></script>
+  <script src="world.js"></script>
+  <script src="audio.js"></script>
+  <script src="render.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

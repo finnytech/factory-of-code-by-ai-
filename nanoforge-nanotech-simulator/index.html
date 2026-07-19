@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NanoForge // Nanotech Biosphere Simulator</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Google Fonts for premium futuristic look -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="app-container">
+        <!-- HEADER -->
+        <header>
+            <div class="header-logo">
+                <span class="pulse-indicator"></span>
+                <h1>NANOPHORGE <span class="accent-text">// COGNITIVE NANOTECH LABS</span></h1>
+            </div>
+            <div class="global-stats">
+                <div class="stat-box">
+                    <span class="stat-label">SYSTEM STATE</span>
+                    <span id="state-val" class="stat-value text-green">ONLINE</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-label">NANOBOTS</span>
+                    <span id="nanobot-count" class="stat-value text-cyan">0</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-label">PATHOGENS</span>
+                    <span id="pathogen-count" class="stat-value text-pink">0</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-label">HEALTHY CELLS</span>
+                    <span id="healthy-count" class="stat-value text-green">0</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-label">GENERATION</span>
+                    <span id="gen-count" class="stat-value text-gold">0</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- MAIN LAYOUT -->
+        <main>
+            <!-- LEFT PANEL: CONTROLS & CODE -->
+            <section class="panel" id="control-panel">
+                <h2 class="panel-title">LABORATORY CONTROLS</h2>
+                
+                <div class="control-group">
+                    <span class="group-label">BIOSPHERE INJECTION</span>
+                    <div class="button-grid">
+                        <button id="btn-spawn-nanobot" class="btn btn-cyan">SPAWN NANOBOT</button>
+                        <button id="btn-spawn-pathogen" class="btn btn-pink">SPAWN PATHOGEN</button>
+                        <button id="btn-spawn-healthy" class="btn btn-green">SPAWN HEALTHY CELL</button>
+                        <button id="btn-spawn-food" class="btn btn-blue">INJECT NUTRIENTS</button>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <span class="group-label">ENVIRONMENTAL STIMULI</span>
+                    <div class="button-grid">
+                        <button id="btn-spray-attractant" class="btn btn-outline-cyan">SPRAY ATTRACTANT</button>
+                        <button id="btn-spray-repellent" class="btn btn-outline-pink">SPRAY REPELLENT</button>
+                        <button id="btn-mutagenic-storm" class="btn btn-outline-gold">MUTAGENIC PULSE</button>
+                        <button id="btn-clear-all" class="btn btn-danger">PURGE CHAMBER</button>
+                    </div>
+                </div>
+
+                <div class="control-group flex-grow">
+                    <span class="group-label">NANOBOT DNA SPECIFICATION (JSON)</span>
+                    <div class="code-editor-container">
+                        <textarea id="dna-editor" spellcheck="false">{
+  "attractionToFood": 1.8,
+  "attractionToPathogens": 2.5,
+  "attractionToAttractant": 0.8,
+  "repulsionToRepellent": 1.5,
+  "sensorAngle": 35,
+  "sensorLength": 70,
+  "maxSpeed": 2.5,
+  "mutationRate": 0.15
+}</textarea>
+                        <button id="btn-apply-dna" class="btn btn-block btn-cyan-glow">COMPILE & APPLY DNA</button>
+                    </div>
+                    <div id="compiler-status" class="compiler-feedback">DNA Compiler ready.</div>
+                </div>
+            </section>
+
+            <!-- CENTER PANEL: SANDBOX VIEW -->
+            <section class="panel" id="sandbox-panel">
+                <div class="canvas-header">
+                    <span class="canvas-title">CHAMBER SPECTROMETER VIEW</span>
+                    <div class="sim-speed-control">
+                        <label for="speed-slider">SPEED: <span id="speed-label">1x</span></label>
+                        <input type="range" id="speed-slider" min="0" max="4" step="1" value="1">
+                    </div>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="sim-canvas"></canvas>
+                </div>
+                <div class="bio-ratio-bar">
+                    <div id="ratio-healthy" class="ratio-segment segment-healthy" style="width: 50%;"></div>
+                    <div id="ratio-pathogen" class="ratio-segment segment-pathogen" style="width: 50%;"></div>
+                </div>
+                <div class="legend">
+                    <span class="legend-item"><span class="legend-dot bg-cyan"></span>Nanobots</span>
+                    <span class="legend-item"><span class="legend-dot bg-pink"></span>Pathogens</span>
+                    <span class="legend-item"><span class="legend-dot bg-green"></span>Healthy Cells</span>
+                    <span class="legend-item"><span class="legend-dot bg-blue"></span>Nutrients</span>
+                    <span class="legend-item"><span class="legend-dot bg-cyan-glow"></span>Attractant Field</span>
+                    <span class="legend-item"><span class="legend-dot bg-pink-glow"></span>Repellent Field</span>
+                </div>
+            </section>
+
+            <!-- RIGHT PANEL: TELEMETRY & STATS -->
+            <section class="panel" id="telemetry-panel">
+                <h2 class="panel-title">TELEMETRY DECK</h2>
+                
+                <div class="control-group">
+                    <span class="group-label">AUDIO SYNTHESIZER (WEB AUDIO API)</span>
+                    <div class="sound-controls">
+                        <button id="btn-sound-toggle" class="btn btn-outline-cyan">AUDIO ON</button>
+                        <div class="volume-slider">
+                            <label>VOL</label>
+                            <input type="range" id="volume-control" min="0" max="1" step="0.1" value="0.2">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <span class="group-label">POPULATION DYNAMICS</span>
+                    <div class="chart-container">
+                        <canvas id="population-chart"></canvas>
+                    </div>
+                </div>
+
+                <div class="control-group flex-grow">
+                    <span class="group-label">GENETIC MUTATION DISTRIBUTIONS</span>
+                    <div class="chart-container">
+                        <canvas id="mutation-chart"></canvas>
+                    </div>
+                </div>
+
+                <div class="telemetry-log">
+                    <span class="group-label">SYSTEM EVENTS</span>
+                    <div id="log-output" class="log-console">
+                        [13:15:14] Initializing Bio-Chamber v4.12...
+                        [13:15:14] Audio synthesis offline. Click "AUDIO ON" to initiate audio bus.
+                        [13:15:14] System ready. Inject cells to begin experiment.
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="simulation.js"></script>
+    <script src="nanobot.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

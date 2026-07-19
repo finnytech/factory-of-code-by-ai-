@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import datetime
+import time
 
 def generate_prompt():
     prompt = """
@@ -24,4 +25,7 @@ def generate_prompt():
     print(prompt.format(time=datetime.datetime.now().isoformat()))
 
 if __name__ == "__main__":
-    generate_prompt()
+    while True:
+        generate_prompt()
+        print("Sleeping for 30 minutes...")
+        time.sleep(30 * 60)

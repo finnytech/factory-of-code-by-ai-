@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kinetic Type Foundry</title><link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main class="shell">
+  <header><div><p class="eyebrow">OFFLINE / SVG STUDY</p><h1>Kinetic Type Foundry</h1><p class="lede">Turn a phrase into a deterministic poster of letter-sized motion paths. Every seed is reproducible, so a good composition can be shared exactly.</p></div><div class="badge">v1.0<br><span>NO DATA LEAVES</span></div></header>
+  <section class="controls" aria-label="Poster controls">
+    <label>Phrase<input id="phrase" value="MOVE WITH INTENT" maxlength="34"></label>
+    <label>Seed<input id="seed" value="314159" inputmode="numeric"></label>
+    <label>Energy <input id="energy" type="range" min="0" max="100" value="62"><output id="energyValue">62</output></label>
+    <label>Palette<select id="palette"><option value="ember">Ember / Ink</option><option value="lagoon">Lagoon / Cream</option><option value="violet">Violet / Lime</option></select></label>
+    <button id="shuffle" class="secondary">↻ New seed</button><button id="download">↓ Export SVG</button>
+  </section>
+  <section class="stage-wrap"><div id="stage" class="stage" aria-label="Generated kinetic poster"></div><aside><p class="eyebrow">COMPOSITION NOTES</p><h2 id="stats">—</h2><p id="note">—</p><div class="legend"><span><i class="dot dot-a"></i>anchor</span><span><i class="dot dot-b"></i>motion</span></div></aside></section>
+  <footer><span>Designed for experiments, workshops, and title cards.</span><span id="status">ready</span></footer>
+</main><script src="app.js"></script>
+</body></html>

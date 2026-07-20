@@ -1,0 +1,38 @@
+{
+  "name": "omniforge-productivity-hub",
+  "version": "1.0.0",
+  "description": "All-in-one productivity suite with IDE, calendar, notes, terminal, explorer, and virtual machine.",
+  "main": "electron.js",
+  "scripts": {
+    "start": "electron .",
+    "build:electron": "electron-builder --win --dir",
+    "dist:electron": "electron-builder --win",
+    "cap:sync": "cap sync",
+    "cap:open": "cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/cli": "^6.0.0",
+    "@capacitor/core": "^6.0.0"
+  },
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.finnytech.omniforge",
+    "productName": "OmniForge",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "win": {
+      "target": [
+        "portable"
+      ]
+    },
+    "files": [
+      "electron.js",
+      "src/**/*"
+    ]
+  }
+}

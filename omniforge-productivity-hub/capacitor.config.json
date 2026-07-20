@@ -1,0 +1,6 @@
+{
+  "appId": "com.finnytech.omniforge",
+  "appName": "OmniForge",
+  "webDir": "src",
+  "bundledWebRuntime": false
+}

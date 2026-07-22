@@ -1,0 +1,22 @@
+{
+  "name": "astral-neural-cosmos",
+  "version": "1.0.0",
+  "description": "Interactive Autonomous Galactic Civilization & AI Ecosystem Engine with procedural cosmic audio synthesis and spatial QuadTree physics.",
+  "main": "js/app.js",
+  "scripts": {
+    "test": "node tests/test-suite.js",
+    "start": "npx serve ."
+  },
+  "keywords": [
+    "ai",
+    "neural-network",
+    "genetic-algorithm",
+    "quadtree",
+    "web-audio",
+    "simulation",
+    "cyberpunk-ui",
+    "astronomy"
+  ],
+  "author": "Antigravity AI Agent",
+  "license": "MIT"
+}

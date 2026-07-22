@@ -1,0 +1,195 @@
+/* Astral Neural Cosmos - Ultra-Modern Cyberpunk & Glassmorphism Aesthetics */
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=Outfit:wght@300;400;600&display=swap');
+
+:root {
+  --bg-deep: #050712;
+  --accent-cyan: #00f3ff;
+  --accent-pink: #ff00a0;
+  --accent-purple: #bd00ff;
+  --glass-bg: rgba(12, 18, 36, 0.65);
+  --glass-border: rgba(0, 243, 255, 0.25);
+  --glass-glow: rgba(0, 243, 255, 0.15);
+  --text-main: #e2f1ff;
+  --text-muted: #8da4be;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+}
+
+body, html {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--bg-deep);
+  font-family: 'Outfit', sans-serif;
+  color: var(--text-main);
+}
+
+#cosmos-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+/* Glassmorphism Panel Base */
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5), inset 0 0 12px var(--glass-glow);
+  border-radius: 14px;
+}
+
+/* Top Telemetry Header Bar */
+#telemetry-header {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 12px 28px;
+}
+
+.brand-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.2rem;
+  font-weight: 800;
+  letter-spacing: 2px;
+  background: linear-gradient(90deg, var(--accent-cyan), var(--accent-pink));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-transform: uppercase;
+}
+
+.metric-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.metric-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 1px;
+}
+
+.metric-val {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--accent-cyan);
+}
+
+#telemetry-canvas {
+  width: 90px;
+  height: 28px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Left Dock Control Panel */
+#control-dock {
+  position: absolute;
+  top: 90px;
+  left: 20px;
+  z-index: 10;
+  width: 260px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dock-section-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.85rem;
+  color: var(--accent-pink);
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+}
+
+.btn-cyber {
+  width: 100%;
+  padding: 10px 14px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-main);
+  background: rgba(0, 243, 255, 0.08);
+  border: 1px solid var(--accent-cyan);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-cyber:hover {
+  background: var(--accent-cyan);
+  color: #000;
+  box-shadow: 0 0 15px var(--accent-cyan);
+}
+
+.preset-select {
+  width: 100%;
+  padding: 8px 12px;
+  background: rgba(5, 7, 18, 0.8);
+  color: var(--text-main);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  outline: none;
+}
+
+/* Right Neural Brain Inspector Drawer */
+#brain-inspector-panel {
+  position: absolute;
+  top: 90px;
+  right: 20px;
+  z-index: 10;
+  width: 320px;
+  padding: 20px;
+  display: none;
+}
+
+#brain-canvas {
+  width: 100%;
+  height: 200px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  margin-top: 10px;
+}
+
+/* Bottom Audio Spectrum Bar */
+#audio-spectrum-bar {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+#audio-spectrum-canvas {
+  width: 180px;
+  height: 24px;
+}

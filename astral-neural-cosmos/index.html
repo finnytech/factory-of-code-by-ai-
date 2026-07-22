@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Astral Neural Cosmos - Interactive Autonomous AI & Galactic Engine</title>
+  <meta name="description" content="Autonomous AI ecosystem simulation with QuadTree spatial physics, multi-layer neural network genetic evolution, and procedural Web Audio cosmic synthesizer.">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Fullscreen Physics & Render Canvas -->
+  <canvas id="cosmos-canvas"></canvas>
+
+  <!-- Top Telemetry Header Bar -->
+  <header id="telemetry-header" class="glass-panel">
+    <div class="brand-title">ASTRAL COSMOS</div>
+    
+    <div class="metric-group">
+      <span class="metric-label">FPS</span>
+      <span id="val-fps" class="metric-val">60</span>
+    </div>
+
+    <div class="metric-group">
+      <span class="metric-label">Agents</span>
+      <span id="val-agents" class="metric-val">0</span>
+    </div>
+
+    <div class="metric-group">
+      <span class="metric-label">Avg Fitness</span>
+      <span id="val-fitness" class="metric-val">0.0</span>
+    </div>
+
+    <div class="metric-group">
+      <span class="metric-label">Max Gen</span>
+      <span id="val-max-gen" class="metric-val">Gen 1</span>
+    </div>
+
+    <canvas id="telemetry-canvas" width="90" height="28"></canvas>
+  </header>
+
+  <!-- Left Control Dock -->
+  <aside id="control-dock" class="glass-panel">
+    <div class="dock-section-title">SIMULATION DOCK</div>
+
+    <button id="btn-toggle-pause" class="btn-cyber">⏸ Pause</button>
+    <button id="btn-audio-toggle" class="btn-cyber">🔊 Audio ON</button>
+    <button id="btn-spawn-batch" class="btn-cyber">⚡ Spawn +15 Agents</button>
+    <button id="btn-reset-sim" class="btn-cyber">🔄 Reset Cosmos</button>
+    <button id="btn-export-json" class="btn-cyber">💾 Export State JSON</button>
+
+    <div style="margin-top: 10px;">
+      <div class="dock-section-title">PRESET SYSTEM</div>
+      <select id="preset-select" class="preset-select">
+        <option value="default">Default Star Cluster</option>
+        <option value="dense_binary_stars">Binary Star Gravity Sink</option>
+        <option value="hyper_evolution">Hyper Evolutionary Swarm</option>
+      </select>
+    </div>
+  </aside>
+
+  <!-- Right Neural Brain Inspector -->
+  <aside id="brain-inspector-panel" class="glass-panel">
+    <div class="dock-section-title">NEURAL BRAIN INSPECTOR</div>
+    <div id="agent-info" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px;">
+      Click any agent to inspect neural synaptic weights.
+    </div>
+    <canvas id="brain-canvas" width="280" height="200"></canvas>
+  </aside>
+
+  <!-- Bottom Audio Spectrum Bar -->
+  <footer id="audio-spectrum-bar" class="glass-panel">
+    <span class="metric-label">Cosmic Synthesizer</span>
+    <canvas id="audio-spectrum-canvas" width="180" height="24"></canvas>
+  </footer>
+
+  <!-- Core Scripts -->
+  <script src="js/engine.js"></script>
+  <script src="js/genetics.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
